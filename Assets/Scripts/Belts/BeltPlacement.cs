@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Mathematics;
+using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
 
@@ -13,11 +14,15 @@ public class BeltPlacement : MonoBehaviour
     [System.Serializable]
     public class ConveyorGroup
     {
+        public Transform conveyorGroupTransform;
+        public BoxCollider collider;
         public Vector3[] conveyorsPos = { };
         public string beltGroupId;
+
     }
 
     [SerializeField] public List<ConveyorGroup> conveyorGroups;
+    public Transform BeltGroupPrefab;
 
     private static bool isHoldingMouse0 = false;
     private static bool isStartClickingMouse0 = false;
@@ -39,6 +44,7 @@ public class BeltPlacement : MonoBehaviour
     private Vector2 hitPoint = Vector2.zero;
     private static Vector2 lastHitPoint = Vector2.zero;
     private Vector3 startPos;
+    public string currentId = "";
 
     public ChangeLayer layers;
     private int currentLayer = 0;
@@ -48,7 +54,8 @@ public class BeltPlacement : MonoBehaviour
 
     public Vector3[] currentBeltPositions = { };
     public Vector3[] currentBeltGroupPositions = { };
-    public Vector3[] overlappingPositions;
+    public Vector3[] overlappingPositions = { };
+    public string[] overlappedGroups = { };
 
     void Update()
     {
@@ -70,28 +77,20 @@ public class BeltPlacement : MonoBehaviour
                 if (CheckForChangeOfPos() && !hasChangedLayers)
                 {
                     GetBeltPositions();
+                    currentId = GetId(currentBeltPositions);
                     //overlappingPositions = CheckForOverlap();
+
                 }
                 else if (hasChangedLayers && currentBeltPositions.Length != 0)
                 {
-                    Debug.Log("hjk");
                     ChangeAnchorPoint();
                     SaveConveyorsPosition();
-                    //overlappingPositions = CheckForOverlap();
                     layers.hasChangedLayer = false;
                 }
             }
             else if (isReleasingMouse0)
             {
-                SaveConveyorsPosition();
-                newConveyorGroup.conveyorsPos = new Vector3[currentBeltGroupPositions.Length];
-                for (int i = 0; i < currentBeltGroupPositions.Length; i++)
-                    newConveyorGroup.conveyorsPos[i] = currentBeltGroupPositions[i];
-                newConveyorGroup.beltGroupId = GetId(currentBeltGroupPositions);
-                conveyorGroups.Add(newConveyorGroup);
-                startedBeltGroup = false;
-                currentBeltPositions = new Vector3[0];
-                currentBeltGroupPositions = new Vector3[0];
+                CreateConveyorBeltGroupClassItem(newConveyorGroup);
             }
         }
     }
@@ -130,18 +129,99 @@ public class BeltPlacement : MonoBehaviour
         startPos = new Vector3(currentBeltPositions[currentBeltPositions.Length - 1].x, currentLayer, currentBeltPositions[currentBeltPositions.Length - 1].z);
     }
 
-    private Vector3[] CheckForOverlap() // Might be working idk ill check when I have visual support
+    private void CreateConveyorBeltGroupClassItem(ConveyorGroup newConveyorGroup)
     {
-        int amountOfOverlap = 0;
-        Vector3[] overlappingPos = { };
+        SaveConveyorsPosition();
+        newConveyorGroup.conveyorsPos = new Vector3[currentBeltGroupPositions.Length];
+        for (int i = 0; i < currentBeltGroupPositions.Length; i++)
+            newConveyorGroup.conveyorsPos[i] = currentBeltGroupPositions[i];
+        newConveyorGroup.beltGroupId = GetId(currentBeltGroupPositions);
 
-        for (int i = 0; i < currentBeltPositions.Length; i++)
-            for (int j = 0; j < currentBeltGroupPositions.Length; j++)
-                if (currentBeltPositions[i] == currentBeltGroupPositions[j])
-                    overlappingPos = Append(overlappingPos, Vector3.up);
-        return overlappingPos;
+        Vector3 minCorner = GetMin(newConveyorGroup.conveyorsPos);
+        Vector3 maxCorner = GetMax(newConveyorGroup.conveyorsPos);
+        Vector3 middle = Vector3.Lerp(minCorner, maxCorner, 0.5f);
+
+        newConveyorGroup.conveyorGroupTransform = Instantiate(BeltGroupPrefab, middle + new Vector3(0f, 0.5f, 0f), quaternion.identity, gameObject.transform);
+        newConveyorGroup.conveyorGroupTransform.gameObject.name = newConveyorGroup.beltGroupId;
+
+        newConveyorGroup.collider = newConveyorGroup.conveyorGroupTransform.gameObject.GetComponent<BoxCollider>();
+        newConveyorGroup.collider.size = new Vector3(maxCorner.x - minCorner.x + 1, maxCorner.y - minCorner.y + 1, maxCorner.z - minCorner.z + 1);
+
+        conveyorGroups.Add(newConveyorGroup);
+
+        startedBeltGroup = false;
+        currentBeltPositions = new Vector3[0];
+        currentBeltGroupPositions = new Vector3[0];
     }
 
+    private string[] CheckIfEnteredOtherGroup()
+    {
+        overlappedGroups = new string[0];
+        for (int i = 0; i < currentBeltPositions.Length; i++)
+        {
+            Ray ray = new Ray(currentBeltPositions[i], Vector3.down);
+            if (Physics.Raycast(ray, out RaycastHit raycastHit))
+                overlappedGroups = Append(overlappedGroups, raycastHit.transform.name);
+        }
+        return overlappedGroups;
+    }
+
+    //private Vector3[] CheckForOverlap()
+    //{
+    //    int amountOfOverlap = 0;
+    //    Vector3[] overlappingPos = { };
+
+    //    for (int i = 0; i < currentBeltPositions.Length; i++)
+    //        for (int j = 0; j < currentBeltGroupPositions.Length; j++)
+    //            if (currentBeltPositions[i] == currentBeltGroupPositions[j])
+    //                overlappingPos = Append(overlappingPos, Vector3.up);
+    //    return overlappingPos;
+    //}
+
+    //private Vector3[] CheckForOverlap(Vector3[] array1, Vector3[] array2)
+    //{
+    //    Vector3[] intersections = { };
+    //    for (int i = 0; i < array1.Length; i++)
+    //        if (array2.Contains(array1[i]))
+    //            intersections = Append(intersections, array1[i]);
+    //    return intersections;
+    //}
+
+    private Vector3 GetMin(Vector3[] array)
+    {
+        float minX = array[0].x;
+        float minY = array[0].y;
+        float minZ = array[0].z;
+
+        for (int i = 0; i < array.Length; i++)
+        {
+            if (minX > array[i].x)
+                minX = array[i].x;
+            if (minY > array[i].y)
+                minY = array[i].y;
+            if (minZ > array[i].z)
+                minZ = array[i].z;
+        }
+        return new Vector3(minX, minY, minZ);
+    }
+
+    private Vector3 GetMax(Vector3[] array)
+    {
+        float maxX = array[0].x;
+        float maxY = array[0].y;
+        float maxZ = array[0].z;
+
+        for (int i = 0; i < array.Length; i++)
+        {
+            if (maxX < array[i].x)
+                maxX = array[i].x;
+            if (maxY < array[i].y)
+                maxY = array[i].y;
+            if (maxZ < array[i].z)
+                maxZ = array[i].z;
+        }
+        return new Vector3(maxX, maxY, maxZ);
+    }
 
     private bool CheckForChangeOfPos()
     {
@@ -173,6 +253,14 @@ public class BeltPlacement : MonoBehaviour
         for (int i = 0; i < array.Length; i++)
             newArray[i] = array[i];
         newArray[newArray.Length - 1] = posToAppend;
+        return newArray;
+    }
+    private string[] Append(string[] array, string stringToAppend)
+    {
+        string[] newArray = new string[array.Length + 1];
+        for (int i = 0; i < array.Length; i++)
+            newArray[i] = array[i];
+        newArray[newArray.Length - 1] = stringToAppend;
         return newArray;
     }
 

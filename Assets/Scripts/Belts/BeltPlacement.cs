@@ -78,8 +78,11 @@ public class BeltPlacement : MonoBehaviour
                 {
                     GetBeltPositions();
                     currentId = GetId(currentBeltPositions);
-                    //overlappingPositions = CheckForOverlap();
-
+                    CheckIfEnteredOtherGroup();
+                    overlappingPositions = new Vector3[0];
+                    for (int i = 0; i < conveyorGroups.Count; i++)
+                        if (overlappedGroups.Contains(conveyorGroups[i].beltGroupId))
+                            overlappingPositions = AppendArray(overlappingPositions, CheckForOverlap(currentBeltPositions, conveyorGroups[i].conveyorsPos));
                 }
                 else if (hasChangedLayers && currentBeltPositions.Length != 0)
                 {
@@ -152,6 +155,8 @@ public class BeltPlacement : MonoBehaviour
         startedBeltGroup = false;
         currentBeltPositions = new Vector3[0];
         currentBeltGroupPositions = new Vector3[0];
+        overlappingPositions = new Vector3[0];
+        overlappedGroups = new string[0];
     }
 
     private string[] CheckIfEnteredOtherGroup()
@@ -159,9 +164,10 @@ public class BeltPlacement : MonoBehaviour
         overlappedGroups = new string[0];
         for (int i = 0; i < currentBeltPositions.Length; i++)
         {
-            Ray ray = new Ray(currentBeltPositions[i], Vector3.down);
-            if (Physics.Raycast(ray, out RaycastHit raycastHit))
-                overlappedGroups = Append(overlappedGroups, raycastHit.transform.name);
+            Ray ray = new Ray(currentBeltPositions[i] + (Vector3.up * 4f), Vector3.down);
+            if (Physics.Raycast(ray, out RaycastHit raycastHit, 5f))
+                if (raycastHit.collider.CompareTag("BeltGroup") && !overlappedGroups.Contains(raycastHit.transform.name))
+                    overlappedGroups = Append(overlappedGroups, raycastHit.transform.name);
         }
         return overlappedGroups;
     }
@@ -178,14 +184,14 @@ public class BeltPlacement : MonoBehaviour
     //    return overlappingPos;
     //}
 
-    //private Vector3[] CheckForOverlap(Vector3[] array1, Vector3[] array2)
-    //{
-    //    Vector3[] intersections = { };
-    //    for (int i = 0; i < array1.Length; i++)
-    //        if (array2.Contains(array1[i]))
-    //            intersections = Append(intersections, array1[i]);
-    //    return intersections;
-    //}
+    private Vector3[] CheckForOverlap(Vector3[] array1, Vector3[] array2)
+    {
+        Vector3[] intersections = { };
+        for (int i = 0; i < array1.Length; i++)
+            if (array2.Contains(array1[i]))
+                intersections = Append(intersections, array1[i]);
+        return intersections;
+    }
 
     private Vector3 GetMin(Vector3[] array)
     {
@@ -253,6 +259,15 @@ public class BeltPlacement : MonoBehaviour
         for (int i = 0; i < array.Length; i++)
             newArray[i] = array[i];
         newArray[newArray.Length - 1] = posToAppend;
+        return newArray;
+    }
+    private Vector3[] AppendArray(Vector3[] array, Vector3[] arrayToAppend)
+    {
+        Vector3[] newArray = new Vector3[array.Length + arrayToAppend.Length];
+        for (int i = 0; i < array.Length; i++)
+            newArray[i] = array[i];
+        for (int i = 0; i < arrayToAppend.Length; i++)
+            newArray[array.Length + i] = arrayToAppend[i];
         return newArray;
     }
     private string[] Append(string[] array, string stringToAppend)

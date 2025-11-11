@@ -10,9 +10,9 @@ GameObject:
   m_Component:
   - component: {fileID: 2528400078919363887}
   - component: {fileID: 4687258352004731742}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: BeltGroup
-  m_TagString: Untagged
+  m_TagString: BeltGroup
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -42,7 +42,7 @@ BoxCollider:
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 64
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0

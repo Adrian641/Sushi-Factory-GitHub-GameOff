@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Mathematics;
+using UnityEditor;
 using UnityEngine;
 
 public class BeltPlacement : MonoBehaviour
@@ -69,13 +70,14 @@ public class BeltPlacement : MonoBehaviour
                 if (CheckForChangeOfPos() && !hasChangedLayers)
                 {
                     GetBeltPositions();
-                    overlappingPositions = CheckForOverlap();
+                    //overlappingPositions = CheckForOverlap();
                 }
                 else if (hasChangedLayers && currentBeltPositions.Length != 0)
                 {
+                    Debug.Log("hjk");
                     ChangeAnchorPoint();
                     SaveConveyorsPosition();
-                    overlappingPositions = CheckForOverlap();
+                    //overlappingPositions = CheckForOverlap();
                     layers.hasChangedLayer = false;
                 }
             }
@@ -85,6 +87,7 @@ public class BeltPlacement : MonoBehaviour
                 newConveyorGroup.conveyorsPos = new Vector3[currentBeltGroupPositions.Length];
                 for (int i = 0; i < currentBeltGroupPositions.Length; i++)
                     newConveyorGroup.conveyorsPos[i] = currentBeltGroupPositions[i];
+                newConveyorGroup.beltGroupId = GetId(currentBeltGroupPositions);
                 conveyorGroups.Add(newConveyorGroup);
                 startedBeltGroup = false;
                 currentBeltPositions = new Vector3[0];
@@ -171,6 +174,58 @@ public class BeltPlacement : MonoBehaviour
             newArray[i] = array[i];
         newArray[newArray.Length - 1] = posToAppend;
         return newArray;
+    }
+
+    private string GetId(Vector3[] posArray)
+    {
+        if (posArray.Length > 1)
+        {
+            int amoutOfRepetitions = 1;
+            char typeOfBelt;
+            Vector3 dir = posArray[1] - posArray[0];
+            Vector3 lastDir = dir;
+            string id = "";
+            for (int i = 1; i < posArray.Length - 1; i++)
+            {
+                dir = posArray[i + 1] - posArray[i];
+                amoutOfRepetitions++;
+                if (dir != lastDir)
+                {
+                    typeOfBelt = GetTypeOfBelt(lastDir);
+                    id += amoutOfRepetitions.ToString();
+                    id += typeOfBelt;
+                    amoutOfRepetitions = 1;
+                }
+                lastDir = dir;
+            }
+            amoutOfRepetitions++;
+            typeOfBelt = GetTypeOfBelt(dir);
+            id += amoutOfRepetitions.ToString();
+            id += typeOfBelt;
+            return id;
+        }
+        else
+        {
+            return "1F";
+        }
+    }
+
+    private char GetTypeOfBelt(Vector3 dir)
+    {
+        char typeOfBelt = 'F';
+        if (dir == new Vector3(0f, 0f, 1f))
+            typeOfBelt = 'F';
+        else if (dir == new Vector3(0f, 0f, -1f))
+            typeOfBelt = 'B';
+        else if (dir == new Vector3(1f, 0f, 0f))
+            typeOfBelt = 'R';
+        else if (dir == new Vector3(-1f, 0f, 0f))
+            typeOfBelt = 'L';
+        else if (dir == new Vector3(0f, 1f, 0f))
+            typeOfBelt = 'U';
+        else if (dir == new Vector3(0f, -1f, 0f))
+            typeOfBelt = 'D';
+        return typeOfBelt;
     }
 
     private void CheckUsersInputs()

@@ -1,8 +1,12 @@
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public class ChangeLayer : MonoBehaviour
 {
-    private int currentLayer = 0;
+    public Camera mainCam;
+
+    public int currentLayer = 0;
+    public bool hasChangedLayer = false;
 
     private bool hasPressedLayerUp = false;
     private bool hasPressedLayerDown = false;
@@ -31,14 +35,18 @@ public class ChangeLayer : MonoBehaviour
 
         if (currentLayer != MAX_HEIGHT && hasPressedLayerUp)
         {
+            mainCam.transform.position += Vector3.up;  
             currentLayer++;
             LayerGrid.transform.position = new Vector3(LayerGridPos.x, currentLayer, LayerGridPos.z);
+            hasChangedLayer = true;
         }
 
         if (currentLayer != 0 && hasPressedLayerDown)
         {
+            mainCam.transform.position += Vector3.down;
             currentLayer--;
             LayerGrid.transform.position = new Vector3(LayerGridPos.x, currentLayer, LayerGridPos.z);
+            hasChangedLayer = true;
         }
 
 
@@ -48,9 +56,8 @@ public class ChangeLayer : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.E))
             hasPressedLayerUp = true;
-        else 
-            hasPressedLayerUp = false;
-
+        else
+            hasPressedLayerUp = false; 
         if (Input.GetKeyDown(KeyCode.Q))
             hasPressedLayerDown = true;
         else

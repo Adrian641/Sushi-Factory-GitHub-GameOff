@@ -138,7 +138,8 @@ public class BeltPlacement : MonoBehaviour
         newConveyorGroup.conveyorsPos = new Vector3[currentBeltGroupPositions.Length];
         for (int i = 0; i < currentBeltGroupPositions.Length; i++)
             newConveyorGroup.conveyorsPos[i] = currentBeltGroupPositions[i];
-        newConveyorGroup.beltGroupId = GetId(currentBeltGroupPositions);
+
+        newConveyorGroup.beltGroupId = GetId(currentBeltGroupPositions) + "-" + GenerateRandomString();
 
         Vector3 minCorner = GetMin(newConveyorGroup.conveyorsPos);
         Vector3 maxCorner = GetMax(newConveyorGroup.conveyorsPos);
@@ -311,6 +312,12 @@ public class BeltPlacement : MonoBehaviour
         {
             return "1F";
         }
+    }
+
+    private string GenerateRandomString()
+    {
+        int randomInt = UnityEngine.Random.Range(0, 9999);
+        return randomInt.ToString();
     }
 
     private char GetTypeOfBelt(Vector3 dir)

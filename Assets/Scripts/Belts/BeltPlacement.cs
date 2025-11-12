@@ -7,6 +7,7 @@ using Unity.Mathematics;
 using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
+using static BeltPlacement;
 
 public class BeltPlacement : MonoBehaviour
 {
@@ -19,9 +20,29 @@ public class BeltPlacement : MonoBehaviour
         public Vector3[] conveyorsPos = { };
         public string beltGroupId;
 
+        [System.Serializable]
+        public class Splitter
+        {
+            public Vector3 splitterPos;
+            public bool HasTwoOutputs;
+            public Vector3 output1Dir;
+            public Vector3 output2Dir;
+            public string output1GroupId;
+            public string output2GroupId;
+            public bool isSetInStone;
+        }
+
+        [System.Serializable]
+        public class Merger
+        {
+            public string groupMergeredIntoId;
+            public Vector3 positionMergedInto;
+        }
+        public List<Splitter> splitters = new List<Splitter>();
+        public Merger merger;
     }
 
-    [SerializeField] public List<ConveyorGroup> conveyorGroups;
+    [SerializeField] private List<ConveyorGroup> conveyorGroups;
     public Transform BeltGroupPrefab;
 
     private static bool isHoldingMouse0 = false;
@@ -33,9 +54,9 @@ public class BeltPlacement : MonoBehaviour
 
     private static bool startedBeltGroup = false;
 
-    [SerializeField] public Camera mainCam;
+    [SerializeField] private Camera mainCam;
 
-    private const int GRID_SIZE_X = 20;
+    private const int GRID_SIZE_X = 20; // Shouldn't be called in this script
     private const int GRID_SIZE_Y = 3;
     private const int GRID_SIZE_Z = 20;
 
@@ -56,6 +77,8 @@ public class BeltPlacement : MonoBehaviour
     public Vector3[] currentBeltGroupPositions = { };
     public Vector3[] overlappingPositions = { };
     public string[] overlappedGroups = { };
+
+    private ConveyorGroup.Splitter currentSplitter;
 
     void Update()
     {
@@ -83,6 +106,7 @@ public class BeltPlacement : MonoBehaviour
                     for (int i = 0; i < conveyorGroups.Count; i++)
                         if (overlappedGroups.Contains(conveyorGroups[i].beltGroupId))
                             overlappingPositions = AppendArray(overlappingPositions, CheckForOverlap(currentBeltPositions, conveyorGroups[i].conveyorsPos));
+                    CheckForSplitter(currentId);
                 }
                 else if (hasChangedLayers && currentBeltPositions.Length != 0)
                 {
@@ -140,6 +164,14 @@ public class BeltPlacement : MonoBehaviour
             newConveyorGroup.conveyorsPos[i] = currentBeltGroupPositions[i];
 
         newConveyorGroup.beltGroupId = GetId(currentBeltGroupPositions) + "-" + GenerateRandomString();
+        if (currentSplitter != null)
+        {
+            if (currentSplitter.HasTwoOutputs)
+                currentSplitter.output2GroupId = newConveyorGroup.beltGroupId;
+            else 
+                currentSplitter.output1GroupId = newConveyorGroup.beltGroupId;
+            currentSplitter.isSetInStone = true;
+        }
 
         Vector3 minCorner = GetMin(newConveyorGroup.conveyorsPos);
         Vector3 maxCorner = GetMax(newConveyorGroup.conveyorsPos);
@@ -166,9 +198,10 @@ public class BeltPlacement : MonoBehaviour
         for (int i = 0; i < currentBeltPositions.Length; i++)
         {
             Ray ray = new Ray(currentBeltPositions[i] + (Vector3.up * 4f), Vector3.down);
-            if (Physics.Raycast(ray, out RaycastHit raycastHit, 5f))
-                if (raycastHit.collider.CompareTag("BeltGroup") && !overlappedGroups.Contains(raycastHit.transform.name))
-                    overlappedGroups = Append(overlappedGroups, raycastHit.transform.name);
+            RaycastHit[] rayHits = Physics.RaycastAll(ray, 5f);
+            for (int j = 0; j < rayHits.Length; j++)
+                if (rayHits[j].collider.CompareTag("BeltGroup") && !overlappedGroups.Contains(rayHits[j].transform.name))
+                    overlappedGroups = Append(overlappedGroups, rayHits[j].transform.name);
         }
         return overlappedGroups;
     }
@@ -279,6 +312,21 @@ public class BeltPlacement : MonoBehaviour
         newArray[newArray.Length - 1] = stringToAppend;
         return newArray;
     }
+    private Vector3[] RemoveFromArray(Vector3[] array, Vector3 ValueToRemove)
+    {
+        Vector3[] newArray = new Vector3[array.Length - 1];
+        int offset = 0;
+        for (int i = 0; i < array.Length; i++)
+        {
+            if (array[i] == ValueToRemove)
+            {
+                offset = 1;
+                continue;
+            }
+            newArray[i - offset] = array[i];
+        }
+        return newArray;
+    }
 
     private string GetId(Vector3[] posArray)
     {
@@ -318,6 +366,85 @@ public class BeltPlacement : MonoBehaviour
     {
         int randomInt = UnityEngine.Random.Range(0, 9999);
         return randomInt.ToString();
+    }
+
+    //private void CheckForSplitBelts()
+    //{
+
+    //}
+
+    //private void CheckForMerger()
+    //{
+    //    //if (overlappingPositions.Contains(currentBeltPositions[0]))
+    //    //    for (int i = 0; i < conveyorGroups.Count; i++)
+    //    //        if (overlappedGroups.Contains(conveyorGroups[i].beltGroupId))
+    //    //            if (conveyorGroups[i].conveyorsPos.Contains(currentBeltPositions[0]))
+    //    //                conveyorGroups[i].splitterPos = Append(conveyorGroups[i].splitterPos, currentBeltPositions[0]);
+    //}
+
+    private void CheckForSplitter(string currentId) // TODO : Check that you cant place splitters at index 0 --- check for splitting at corners --- test with more sophisticated beltGroups (with several layers involved)
+    {
+        bool removeCurrentSplitter = false;
+        if (currentBeltPositions.Length == 1)
+            removeCurrentSplitter = true;
+        if (overlappedGroups.Length != 0 && overlappingPositions.Contains(currentBeltPositions[0]))
+        {
+            for (int i = 0; i < conveyorGroups.Count; i++)
+            {
+                if (overlappedGroups.Contains(conveyorGroups[i].beltGroupId))
+                {
+                    if (!removeCurrentSplitter && conveyorGroups[i].conveyorsPos[0] == currentBeltPositions[0])
+                        continue;
+                    if (!removeCurrentSplitter && conveyorGroups[i].conveyorsPos.Contains(currentBeltPositions[1]))
+                        removeCurrentSplitter = true;
+
+                    if (conveyorGroups[i].splitters.Count > 0) // Here change the condition so that it actually creates a new splitter if one of more are actif
+                    {
+                        for (int j = 0; j < conveyorGroups[i].splitters.Count; j++)
+                        {
+                            if (conveyorGroups[i].splitters[j].splitterPos == currentBeltPositions[0]) // Here probably add an if to add one if more then one are actif
+                            {
+                                if (removeCurrentSplitter && !conveyorGroups[i].splitters[j].isSetInStone)
+                                {
+                                    conveyorGroups[i].splitters.Remove(conveyorGroups[i].splitters[conveyorGroups[i].splitters.Count - 1]);
+                                    currentSplitter = null;
+                                    break;
+                                }
+                                else if (!removeCurrentSplitter && conveyorGroups[i].splitters[j].output1Dir != currentBeltPositions[1] - currentBeltPositions[0])
+                                {
+                                    AddOutputToSplitter(conveyorGroups[i].splitters[j], currentBeltPositions[0], currentId);
+                                    break;
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    else if (!removeCurrentSplitter) // Here ""  ""
+                    {
+                        AddSplitter(conveyorGroups[i], currentBeltPositions[0], currentId);
+                    }
+                }
+            }
+        }
+    }
+
+    private void AddSplitter(ConveyorGroup conveyorGroup, Vector3 position, string outputId)
+    {
+        ConveyorGroup.Splitter newSplitter = new ConveyorGroup.Splitter();
+        newSplitter.splitterPos = position;
+        newSplitter.output1GroupId = outputId;
+        newSplitter.output1Dir = currentBeltPositions[1] - position;
+
+        currentSplitter = newSplitter;
+        conveyorGroup.splitters.Add(newSplitter);
+    }
+    private void AddOutputToSplitter(ConveyorGroup.Splitter splitterToModify, Vector3 position, string output2Id)
+    {
+        splitterToModify.output2Dir = currentBeltPositions[1] - position;
+        splitterToModify.output2GroupId = output2Id;
+        splitterToModify.HasTwoOutputs = true;
+
+        currentSplitter = splitterToModify;
     }
 
     private char GetTypeOfBelt(Vector3 dir)

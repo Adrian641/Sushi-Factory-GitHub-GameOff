@@ -2,6 +2,7 @@ using JetBrains.Annotations;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Linq;
 using Unity.Mathematics;
 using Unity.VisualScripting;
@@ -62,10 +63,10 @@ public class BeltPlacement : MonoBehaviour
 
     private static RaycastHit RayHit;
     private static Ray ray;
-    private Vector2 hitPoint = Vector2.zero;
-    private static Vector2 lastHitPoint = Vector2.zero;
-    private Vector3 startPos;
-    public string currentId = "";
+    public Vector3 hitPoint;
+    public Vector3 lastHitPoint;
+    public Vector3 startPos;
+    private string currentId = "";
 
     public ChangeLayer layers;
     private int currentLayer = 0;
@@ -73,13 +74,13 @@ public class BeltPlacement : MonoBehaviour
     private int lastLayer = 0;
 
 
-    private Vector3[] currentBeltPositions = { };
-    private Vector3[] currentBeltGroupPositions = { };
-    private Vector3[] overlappingPositions = { };
-    private string[] overlappedGroups = { };
+    public Vector3[] currentBeltPositions = { };
+    public Vector3[] currentBeltGroupPositions = { };
+    public Vector3[] overlappingPositions = { };
+    public string[] overlappedGroups = { };
 
-    public ConveyorGroup.Splitter currentSplitter;
-    public Vector3 lastSplitterPos = Vector3.negativeInfinity;
+    private ConveyorGroup.Splitter currentSplitter;
+    private Vector3 lastSplitterPos = Vector3.negativeInfinity;
 
     void Update()
     {
@@ -92,6 +93,14 @@ public class BeltPlacement : MonoBehaviour
             if (Physics.Raycast(mainCam.ScreenPointToRay(Input.mousePosition), out RaycastHit RayHit))
                 startPos = new Vector3(MathF.Round(RayHit.point.x), currentLayer, MathF.Round(RayHit.point.z));
             startedBeltGroup = true;
+            lastHitPoint = Vector3.negativeInfinity;
+        }
+        else if (isHoldingMouse1)
+        {
+            if (CheckForChangeOfPos())
+            {
+                DeleteConveyors();
+            }
         }
         if (startedBeltGroup)
         {
@@ -113,8 +122,8 @@ public class BeltPlacement : MonoBehaviour
                 {
                     ChangeAnchorPoint();
                     SaveConveyorsPosition();
-                    layers.hasChangedLayer = false;
                 }
+                layers.hasChangedLayer = false;
             }
             else if (isReleasingMouse0)
             {
@@ -127,11 +136,11 @@ public class BeltPlacement : MonoBehaviour
     {
         lastHitPoint = hitPoint;
         int distanceX = (int)math.abs(lastHitPoint.x - startPos.x);
-        int distanceY = (int)math.abs(lastHitPoint.y - startPos.z);
+        int distanceY = (int)math.abs(lastHitPoint.z - startPos.z);
         Vector2 dir = Vector2.one;
         if (startPos.x > lastHitPoint.x)
             dir.x = -1f;
-        if (startPos.z > lastHitPoint.y)
+        if (startPos.z > lastHitPoint.z)
             dir.y = -1f;
 
         currentBeltPositions = new Vector3[distanceX + distanceY + 1];
@@ -171,27 +180,36 @@ public class BeltPlacement : MonoBehaviour
                 currentSplitter.output2GroupId = newConveyorGroup.beltGroupId;
             else
                 currentSplitter.output1GroupId = newConveyorGroup.beltGroupId;
+
+            if (!currentSplitter.isSetInStone && currentBeltGroupPositions.Length > 0)
+                currentSplitter.output1Dir = currentBeltGroupPositions[1] - currentSplitter.splitterPos;
             currentSplitter.isSetInStone = true;
+
         }
 
-        Vector3 minCorner = GetMin(newConveyorGroup.conveyorsPos);
-        Vector3 maxCorner = GetMax(newConveyorGroup.conveyorsPos);
-        Vector3 middle = Vector3.Lerp(minCorner, maxCorner, 0.5f);
-
-        newConveyorGroup.conveyorGroupTransform = Instantiate(BeltGroupPrefab, middle + new Vector3(0f, 0.5f, 0f), quaternion.identity, gameObject.transform);
-        newConveyorGroup.conveyorGroupTransform.gameObject.name = newConveyorGroup.beltGroupId;
-
-        newConveyorGroup.collider = newConveyorGroup.conveyorGroupTransform.gameObject.GetComponent<BoxCollider>();
-        newConveyorGroup.collider.size = new Vector3(maxCorner.x - minCorner.x + 1, maxCorner.y - minCorner.y + 1, maxCorner.z - minCorner.z + 1);
+        CreateTriggerBoxOnGroup(newConveyorGroup);
 
         conveyorGroups.Add(newConveyorGroup);
 
         startedBeltGroup = false;
         currentSplitter = new ConveyorGroup.Splitter();
+        lastHitPoint = Vector3.negativeInfinity;
         currentBeltPositions = new Vector3[0];
         currentBeltGroupPositions = new Vector3[0];
         overlappingPositions = new Vector3[0];
         overlappedGroups = new string[0];
+    }
+    private void CreateTriggerBoxOnGroup(ConveyorGroup group)
+    {
+        Vector3 minCorner = GetMin(group.conveyorsPos);
+        Vector3 maxCorner = GetMax(group.conveyorsPos);
+        Vector3 middle = Vector3.Lerp(minCorner, maxCorner, 0.5f);
+
+        group.conveyorGroupTransform = Instantiate(BeltGroupPrefab, middle + new Vector3(0f, 0.5f, 0f), quaternion.identity, gameObject.transform);
+        group.conveyorGroupTransform.gameObject.name = group.beltGroupId;
+
+        group.collider = group.conveyorGroupTransform.gameObject.GetComponent<BoxCollider>();
+        group.collider.size = new Vector3(maxCorner.x - minCorner.x + 1, maxCorner.y - minCorner.y + 1, maxCorner.z - minCorner.z + 1);
     }
 
     private string[] CheckIfEnteredOtherGroup()
@@ -268,11 +286,15 @@ public class BeltPlacement : MonoBehaviour
     private bool CheckForChangeOfPos()
     {
         ray = mainCam.ScreenPointToRay(Input.mousePosition);
-        if (Physics.Raycast(ray, out RayHit))
+        RaycastHit[] hits = Physics.RaycastAll(ray);
+        for (int i = 0; i < hits.Length; i++)
         {
-            hitPoint = new Vector2(MathF.Round(RayHit.point.x), MathF.Round(RayHit.point.z));
-            if (hitPoint != lastHitPoint || justPressedF)
-                return true;
+            if (hits[i].collider.CompareTag("Grid"))
+            {
+                hitPoint = new Vector3(MathF.Round(hits[i].point.x), currentLayer, MathF.Round(hits[i].point.z));
+                if (hitPoint != lastHitPoint || justPressedF)
+                    return true;
+            }
         }
         return false;
     }
@@ -329,7 +351,20 @@ public class BeltPlacement : MonoBehaviour
         }
         return newArray;
     }
-
+    private Vector3[] RemoveFromArrayFromAPoint(Vector3[] array, Vector3 point)
+    {
+        int newLength = 0;
+        for (int i = 0; i < array.Length; i++)
+        {
+            if (point == array[i])
+                break;
+            newLength++;
+        }
+        Vector3[] newArray = new Vector3[newLength];
+        for (int i = 0; i < newLength; i++)
+            newArray[i] = array[i];
+        return newArray;
+    }
     private string GetId(Vector3[] posArray)
     {
         if (posArray.Length > 1)
@@ -369,22 +404,7 @@ public class BeltPlacement : MonoBehaviour
         int randomInt = UnityEngine.Random.Range(0, 9999);
         return randomInt.ToString();
     }
-
-    //private void CheckForSplitBelts()
-    //{
-
-    //}
-
-    //private void CheckForMerger()
-    //{
-    //    //if (overlappingPositions.Contains(currentBeltPositions[0]))
-    //    //    for (int i = 0; i < conveyorGroups.Count; i++)
-    //    //        if (overlappedGroups.Contains(conveyorGroups[i].beltGroupId))
-    //    //            if (conveyorGroups[i].conveyorsPos.Contains(currentBeltPositions[0]))
-    //    //                conveyorGroups[i].splitterPos = Append(conveyorGroups[i].splitterPos, currentBeltPositions[0]);
-    //}
-
-    private void CheckForSplitter(string currentId) // TODO : Check that you cant place splitters at index 0 --- check for splitting at corners --- test with more sophisticated beltGroups (with several layers involved)
+    private void CheckForSplitter(string currentId)
     {
         bool removeCurrentSplitter = false;
         if (currentBeltPositions.Length == 1)
@@ -400,31 +420,22 @@ public class BeltPlacement : MonoBehaviour
                     if (!removeCurrentSplitter && conveyorGroups[i].conveyorsPos.Contains(currentBeltPositions[1]))
                         removeCurrentSplitter = true;
 
-                    //if (conveyorGroups[i].splitters.Count >= 0) // Here change the condition so that it actually creates a new splitter if one or more are actif
-                    //{
                     if (lastSplitterPos != currentBeltPositions[0] && !removeCurrentSplitter)
                         AddSplitter(conveyorGroups[i], currentBeltPositions[0], currentId);
 
                     for (int j = 0; j < conveyorGroups[i].splitters.Count; j++)
                     {
-                        //if (!removeCurrentSplitter && currentSplitter.splitterPos == Vector3.zero)
-                        //    AddSplitter(conveyorGroups[i], currentBeltPositions[0], currentId);
-                        if (conveyorGroups[i].splitters[j].splitterPos == currentBeltPositions[0]) // Here probably add an if to add one if more then one are actif
+                        if (conveyorGroups[i].splitters[j].splitterPos == currentBeltPositions[0])
                         {
                             if (removeCurrentSplitter && !conveyorGroups[i].splitters[j].isSetInStone)
                                 DeleteSplitter(conveyorGroups[i].splitters);
                             else if (removeCurrentSplitter && conveyorGroups[i].splitters[j].isSetInStone)
                                 ClearSecondOutput(conveyorGroups[i].splitters[j]);
-                            else if (!removeCurrentSplitter && conveyorGroups[i].splitters[j].output1Dir != currentBeltPositions[1] - currentBeltPositions[0])
+                            else if (!removeCurrentSplitter && conveyorGroups[i].splitters[j].output1Dir != currentBeltPositions[1] - currentBeltPositions[0] && conveyorGroups[i].splitters[j].isSetInStone)
                                 AddOutputToSplitter(conveyorGroups[i].splitters[j], currentBeltPositions[0], currentId);
                             break;
                         }
                     }
-                    //}
-                    //else if (!removeCurrentSplitter) // Here ""  ""
-                    //{
-                    //    AddSplitter(conveyorGroups[i], currentBeltPositions[0], currentId);
-                    //}
                 }
             }
         }
@@ -463,6 +474,78 @@ public class BeltPlacement : MonoBehaviour
         splitters.Remove(splitters[splitters.Count - 1]);
         currentSplitter = null;
         lastSplitterPos = Vector3.negativeInfinity;
+    }
+    private void DeleteConveyors()
+    {
+        lastHitPoint = hitPoint;
+        bool needsDisassociate = false;
+        Ray ray = new Ray(new Vector3(hitPoint.x, 4f, hitPoint.z), Vector3.down);
+        RaycastHit[] raycastHits = Physics.RaycastAll(ray, 5f);
+        for (int i = 0; i < raycastHits.Length; i++)
+        {
+            if (raycastHits[i].collider.CompareTag("BeltGroup"))
+            {
+                for (int j = 0; j < conveyorGroups.Count; j++)
+                {
+                    if (conveyorGroups[j].beltGroupId == raycastHits[i].collider.name)
+                    {
+                        if (conveyorGroups[j].conveyorsPos.Contains(hitPoint))
+                        {
+                            if (conveyorGroups[j].conveyorsPos[0] != hitPoint && conveyorGroups[j].conveyorsPos[conveyorGroups[j].conveyorsPos.Length - 1] != hitPoint)
+                                DisassociateGroup(conveyorGroups[j]);
+                            else if (conveyorGroups[j].conveyorsPos[0] == hitPoint || conveyorGroups[j].conveyorsPos[conveyorGroups[j].conveyorsPos.Length - 1] == hitPoint)
+                                UpdateGroup(conveyorGroups[j]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void DisassociateGroup(ConveyorGroup group)
+    {
+        ConveyorGroup newGroup = new ConveyorGroup();
+        ConveyorGroup newBaseGroup = new ConveyorGroup();
+        bool hasCrossed = false;
+        for (int i = 0; i < group.conveyorsPos.Length; i++)
+        {
+            if (group.conveyorsPos[i] == hitPoint)
+            {
+                hasCrossed = true;
+                continue;
+            }
+
+            if (hasCrossed)
+                newGroup.conveyorsPos = Append(newGroup.conveyorsPos, group.conveyorsPos[i]);
+            else
+                newBaseGroup.conveyorsPos = Append(newBaseGroup.conveyorsPos, group.conveyorsPos[i]);
+        }
+        conveyorGroups.Remove(group);
+        for (int i = 0; i < gameObject.transform.childCount; i++)
+            if (gameObject.transform.GetChild(i).name == group.beltGroupId)
+                Destroy(gameObject.transform.GetChild(i).gameObject);
+        newBaseGroup.beltGroupId = GetId(newBaseGroup.conveyorsPos) + "-" + GenerateRandomString();
+        CreateTriggerBoxOnGroup(newBaseGroup);
+        conveyorGroups.Add(newBaseGroup);
+        newGroup.beltGroupId = GetId(newGroup.conveyorsPos) + "-" + GenerateRandomString();
+        CreateTriggerBoxOnGroup(newGroup);
+        conveyorGroups.Add(newGroup);
+    }
+    private void UpdateGroup(ConveyorGroup group)
+    {
+        if (group.conveyorsPos.Length > 1)
+        {
+            ConveyorGroup newGroup = new ConveyorGroup();
+            newGroup.conveyorsPos = RemoveFromArray(group.conveyorsPos, hitPoint);
+            newGroup.beltGroupId = GetId(newGroup.conveyorsPos) + "-" + GenerateRandomString();
+            CreateTriggerBoxOnGroup(newGroup);
+            conveyorGroups.Add(newGroup);
+        }
+
+        conveyorGroups.Remove(group);
+        for (int i = 0; i < gameObject.transform.childCount; i++)
+            if (gameObject.transform.GetChild(i).name == group.beltGroupId)
+                Destroy(gameObject.transform.GetChild(i).gameObject);
     }
 
     private char GetTypeOfBelt(Vector3 dir)

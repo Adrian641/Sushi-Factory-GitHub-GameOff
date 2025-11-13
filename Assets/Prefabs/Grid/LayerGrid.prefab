@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 393372134269007003}
   - component: {fileID: 5786062036736394212}
   - component: {fileID: 1556432150969937935}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: LayerGrid
   m_TagString: Grid
   m_Icon: {fileID: 0}

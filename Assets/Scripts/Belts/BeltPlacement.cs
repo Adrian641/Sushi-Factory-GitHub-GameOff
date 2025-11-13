@@ -73,12 +73,13 @@ public class BeltPlacement : MonoBehaviour
     private int lastLayer = 0;
 
 
-    public Vector3[] currentBeltPositions = { };
-    public Vector3[] currentBeltGroupPositions = { };
-    public Vector3[] overlappingPositions = { };
-    public string[] overlappedGroups = { };
+    private Vector3[] currentBeltPositions = { };
+    private Vector3[] currentBeltGroupPositions = { };
+    private Vector3[] overlappingPositions = { };
+    private string[] overlappedGroups = { };
 
-    private ConveyorGroup.Splitter currentSplitter;
+    public ConveyorGroup.Splitter currentSplitter;
+    public Vector3 lastSplitterPos = Vector3.negativeInfinity;
 
     void Update()
     {
@@ -168,7 +169,7 @@ public class BeltPlacement : MonoBehaviour
         {
             if (currentSplitter.HasTwoOutputs)
                 currentSplitter.output2GroupId = newConveyorGroup.beltGroupId;
-            else 
+            else
                 currentSplitter.output1GroupId = newConveyorGroup.beltGroupId;
             currentSplitter.isSetInStone = true;
         }
@@ -186,6 +187,7 @@ public class BeltPlacement : MonoBehaviour
         conveyorGroups.Add(newConveyorGroup);
 
         startedBeltGroup = false;
+        currentSplitter = new ConveyorGroup.Splitter();
         currentBeltPositions = new Vector3[0];
         currentBeltGroupPositions = new Vector3[0];
         overlappingPositions = new Vector3[0];
@@ -398,31 +400,31 @@ public class BeltPlacement : MonoBehaviour
                     if (!removeCurrentSplitter && conveyorGroups[i].conveyorsPos.Contains(currentBeltPositions[1]))
                         removeCurrentSplitter = true;
 
-                    if (conveyorGroups[i].splitters.Count > 0) // Here change the condition so that it actually creates a new splitter if one of more are actif
+                    //if (conveyorGroups[i].splitters.Count >= 0) // Here change the condition so that it actually creates a new splitter if one or more are actif
+                    //{
+                    if (lastSplitterPos != currentBeltPositions[0] && !removeCurrentSplitter)
+                        AddSplitter(conveyorGroups[i], currentBeltPositions[0], currentId);
+
+                    for (int j = 0; j < conveyorGroups[i].splitters.Count; j++)
                     {
-                        for (int j = 0; j < conveyorGroups[i].splitters.Count; j++)
+                        //if (!removeCurrentSplitter && currentSplitter.splitterPos == Vector3.zero)
+                        //    AddSplitter(conveyorGroups[i], currentBeltPositions[0], currentId);
+                        if (conveyorGroups[i].splitters[j].splitterPos == currentBeltPositions[0]) // Here probably add an if to add one if more then one are actif
                         {
-                            if (conveyorGroups[i].splitters[j].splitterPos == currentBeltPositions[0]) // Here probably add an if to add one if more then one are actif
-                            {
-                                if (removeCurrentSplitter && !conveyorGroups[i].splitters[j].isSetInStone)
-                                {
-                                    conveyorGroups[i].splitters.Remove(conveyorGroups[i].splitters[conveyorGroups[i].splitters.Count - 1]);
-                                    currentSplitter = null;
-                                    break;
-                                }
-                                else if (!removeCurrentSplitter && conveyorGroups[i].splitters[j].output1Dir != currentBeltPositions[1] - currentBeltPositions[0])
-                                {
-                                    AddOutputToSplitter(conveyorGroups[i].splitters[j], currentBeltPositions[0], currentId);
-                                    break;
-                                }
-                                break;
-                            }
+                            if (removeCurrentSplitter && !conveyorGroups[i].splitters[j].isSetInStone)
+                                DeleteSplitter(conveyorGroups[i].splitters);
+                            else if (removeCurrentSplitter && conveyorGroups[i].splitters[j].isSetInStone)
+                                ClearSecondOutput(conveyorGroups[i].splitters[j]);
+                            else if (!removeCurrentSplitter && conveyorGroups[i].splitters[j].output1Dir != currentBeltPositions[1] - currentBeltPositions[0])
+                                AddOutputToSplitter(conveyorGroups[i].splitters[j], currentBeltPositions[0], currentId);
+                            break;
                         }
                     }
-                    else if (!removeCurrentSplitter) // Here ""  ""
-                    {
-                        AddSplitter(conveyorGroups[i], currentBeltPositions[0], currentId);
-                    }
+                    //}
+                    //else if (!removeCurrentSplitter) // Here ""  ""
+                    //{
+                    //    AddSplitter(conveyorGroups[i], currentBeltPositions[0], currentId);
+                    //}
                 }
             }
         }
@@ -437,6 +439,8 @@ public class BeltPlacement : MonoBehaviour
 
         currentSplitter = newSplitter;
         conveyorGroup.splitters.Add(newSplitter);
+
+        lastSplitterPos = newSplitter.splitterPos;
     }
     private void AddOutputToSplitter(ConveyorGroup.Splitter splitterToModify, Vector3 position, string output2Id)
     {
@@ -445,6 +449,20 @@ public class BeltPlacement : MonoBehaviour
         splitterToModify.HasTwoOutputs = true;
 
         currentSplitter = splitterToModify;
+    }
+    private void ClearSecondOutput(ConveyorGroup.Splitter splitterToModify)
+    {
+        splitterToModify.output2Dir = Vector3.zero;
+        splitterToModify.output2GroupId = "";
+        splitterToModify.HasTwoOutputs = false;
+
+        currentSplitter = null;
+    }
+    private void DeleteSplitter(List<ConveyorGroup.Splitter> splitters)
+    {
+        splitters.Remove(splitters[splitters.Count - 1]);
+        currentSplitter = null;
+        lastSplitterPos = Vector3.negativeInfinity;
     }
 
     private char GetTypeOfBelt(Vector3 dir)

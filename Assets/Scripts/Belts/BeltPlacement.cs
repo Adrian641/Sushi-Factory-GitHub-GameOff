@@ -20,6 +20,7 @@ public class BeltPlacement : MonoBehaviour
         public BoxCollider collider;
         public Vector3[] conveyorsPos = { };
         public string beltGroupId;
+        public string groupAttachedTo = string.Empty;
 
         [System.Serializable]
         public class Splitter
@@ -81,6 +82,7 @@ public class BeltPlacement : MonoBehaviour
 
     private ConveyorGroup.Splitter currentSplitter;
     private Vector3 lastSplitterPos = Vector3.negativeInfinity;
+    private string groupAttachedTo = string.Empty;
 
     void Update()
     {
@@ -184,7 +186,7 @@ public class BeltPlacement : MonoBehaviour
             if (!currentSplitter.isSetInStone && currentBeltGroupPositions.Length > 0)
                 currentSplitter.output1Dir = currentBeltGroupPositions[1] - currentSplitter.splitterPos;
             currentSplitter.isSetInStone = true;
-
+            newConveyorGroup.groupAttachedTo = groupAttachedTo;
         }
 
         CreateTriggerBoxOnGroup(newConveyorGroup);
@@ -192,7 +194,8 @@ public class BeltPlacement : MonoBehaviour
         conveyorGroups.Add(newConveyorGroup);
 
         startedBeltGroup = false;
-        currentSplitter = new ConveyorGroup.Splitter();
+        currentSplitter = null;
+        groupAttachedTo = string.Empty;
         lastHitPoint = Vector3.negativeInfinity;
         currentBeltPositions = new Vector3[0];
         currentBeltGroupPositions = new Vector3[0];
@@ -415,6 +418,8 @@ public class BeltPlacement : MonoBehaviour
             {
                 if (overlappedGroups.Contains(conveyorGroups[i].beltGroupId))
                 {
+                    
+
                     if (!removeCurrentSplitter && conveyorGroups[i].conveyorsPos[0] == currentBeltPositions[0])
                         continue;
                     if (!removeCurrentSplitter && conveyorGroups[i].conveyorsPos.Contains(currentBeltPositions[1]))
@@ -427,6 +432,7 @@ public class BeltPlacement : MonoBehaviour
                     {
                         if (conveyorGroups[i].splitters[j].splitterPos == currentBeltPositions[0])
                         {
+                            groupAttachedTo = conveyorGroups[i].beltGroupId;
                             if (removeCurrentSplitter && !conveyorGroups[i].splitters[j].isSetInStone)
                                 DeleteSplitter(conveyorGroups[i].splitters);
                             else if (removeCurrentSplitter && conveyorGroups[i].splitters[j].isSetInStone)
@@ -468,17 +474,18 @@ public class BeltPlacement : MonoBehaviour
         splitterToModify.HasTwoOutputs = false;
 
         currentSplitter = null;
+        groupAttachedTo = string.Empty;
     }
     private void DeleteSplitter(List<ConveyorGroup.Splitter> splitters)
     {
         splitters.Remove(splitters[splitters.Count - 1]);
         currentSplitter = null;
         lastSplitterPos = Vector3.negativeInfinity;
+        groupAttachedTo = string.Empty;
     }
     private void DeleteConveyors()
     {
         lastHitPoint = hitPoint;
-        bool needsDisassociate = false;
         Ray ray = new Ray(new Vector3(hitPoint.x, 4f, hitPoint.z), Vector3.down);
         RaycastHit[] raycastHits = Physics.RaycastAll(ray, 5f);
         for (int i = 0; i < raycastHits.Length; i++)
@@ -526,9 +533,14 @@ public class BeltPlacement : MonoBehaviour
                 Destroy(gameObject.transform.GetChild(i).gameObject);
         newBaseGroup.beltGroupId = GetId(newBaseGroup.conveyorsPos) + "-" + GenerateRandomString();
         CreateTriggerBoxOnGroup(newBaseGroup);
+        CheckForSplitters(group, newBaseGroup);
+        RebindAttachedSplitter(group, newBaseGroup);
+        newBaseGroup.groupAttachedTo = group.groupAttachedTo;
         conveyorGroups.Add(newBaseGroup);
+
         newGroup.beltGroupId = GetId(newGroup.conveyorsPos) + "-" + GenerateRandomString();
         CreateTriggerBoxOnGroup(newGroup);
+        CheckForSplitters(group, newGroup);
         conveyorGroups.Add(newGroup);
     }
     private void UpdateGroup(ConveyorGroup group)
@@ -539,6 +551,9 @@ public class BeltPlacement : MonoBehaviour
             newGroup.conveyorsPos = RemoveFromArray(group.conveyorsPos, hitPoint);
             newGroup.beltGroupId = GetId(newGroup.conveyorsPos) + "-" + GenerateRandomString();
             CreateTriggerBoxOnGroup(newGroup);
+            CheckForSplitters(group, newGroup);
+            RebindAttachedSplitter(group, newGroup);
+            newGroup.groupAttachedTo = group.groupAttachedTo;
             conveyorGroups.Add(newGroup);
         }
 
@@ -546,6 +561,26 @@ public class BeltPlacement : MonoBehaviour
         for (int i = 0; i < gameObject.transform.childCount; i++)
             if (gameObject.transform.GetChild(i).name == group.beltGroupId)
                 Destroy(gameObject.transform.GetChild(i).gameObject);
+    }
+    private void CheckForSplitters(ConveyorGroup originalGroup, ConveyorGroup newGroup)
+    {
+        for (int i = 0; i < originalGroup.splitters.Count; i++)
+            if (newGroup.conveyorsPos.Contains(originalGroup.splitters[i].splitterPos))
+                newGroup.splitters.Add(originalGroup.splitters[i]);
+    }
+    private void RebindAttachedSplitter(ConveyorGroup group, ConveyorGroup newGroup)
+    {
+        if (group.groupAttachedTo != string.Empty)
+            for (int i = 0; i < conveyorGroups.Count; i++)
+                if (conveyorGroups[i].beltGroupId == group.groupAttachedTo)
+                    for (int j = 0; j < conveyorGroups[i].splitters.Count; j++)
+                        if (conveyorGroups[i].splitters[j].splitterPos == newGroup.conveyorsPos[0])
+                        {
+                            if (conveyorGroups[i].splitters[j].output1GroupId == group.beltGroupId)
+                                conveyorGroups[i].splitters[j].output1GroupId = newGroup.beltGroupId;
+                            else if (conveyorGroups[i].splitters[j].output2GroupId == group.beltGroupId)
+                                conveyorGroups[i].splitters[j].output2GroupId = newGroup.beltGroupId;
+                        }
     }
 
     private char GetTypeOfBelt(Vector3 dir)

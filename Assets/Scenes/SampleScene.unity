@@ -526,11 +526,14 @@ MonoBehaviour:
   BeltGroupPrefab: {fileID: 2528400078919363887, guid: f61c9ed3a0966a24fa8d6c0bab209761,
     type: 3}
   mainCam: {fileID: 330585545}
-  currentId: 
+  hitPoint: {x: 0, y: 0, z: 0}
+  lastHitPoint: {x: 0, y: 0, z: 0}
+  startPos: {x: 0, y: 0, z: 0}
   layers: {fileID: 1393824109}
   currentBeltPositions: []
   currentBeltGroupPositions: []
   overlappingPositions: []
+  overlappedGroups: []
 --- !u!4 &1875321384
 Transform:
   m_ObjectHideFlags: 0

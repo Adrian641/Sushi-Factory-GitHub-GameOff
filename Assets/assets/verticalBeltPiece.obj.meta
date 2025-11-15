@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 0db97332b5888de4cacb9d2d80b22dcd
+guid: 943a975d39889a347bec6be048bdf738
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
@@ -7,8 +7,8 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: emptyExtractorMat
-    second: {fileID: 2100000, guid: 07b840d20cf34564c8d51e00bb1ea63d, type: 2}
+      name: verticalBeltPieceMat
+    second: {fileID: 2100000, guid: 539c25ceda38085468ff12b59d0ed8c1, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

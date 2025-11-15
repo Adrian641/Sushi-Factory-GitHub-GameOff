@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 0db97332b5888de4cacb9d2d80b22dcd
+guid: 5e3d9de9012dddb4fb5059fcb61f60f8
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
@@ -7,8 +7,18 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: emptyExtractorMat
-    second: {fileID: 2100000, guid: 07b840d20cf34564c8d51e00bb1ea63d, type: 2}
+      name: stackerTopMat
+    second: {fileID: 2100000, guid: 1d8cfdc647d1ef748837b7227901522e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: stackerTop_stackerdoor1Mat
+    second: {fileID: 2100000, guid: 1d8cfdc647d1ef748837b7227901522e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: stackerTop_stackerdoor2Mat
+    second: {fileID: 2100000, guid: 1d8cfdc647d1ef748837b7227901522e, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

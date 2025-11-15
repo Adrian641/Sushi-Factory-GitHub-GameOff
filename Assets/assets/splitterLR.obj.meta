@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 0db97332b5888de4cacb9d2d80b22dcd
+guid: 341238f48934ac542a609232ffc861d9
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
@@ -7,8 +7,8 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: emptyExtractorMat
-    second: {fileID: 2100000, guid: 07b840d20cf34564c8d51e00bb1ea63d, type: 2}
+      name: splitterLRMat
+    second: {fileID: 2100000, guid: 447e51404128fb7489c965b457f1e6a8, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

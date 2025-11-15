@@ -113,7 +113,7 @@ public class BeltPlacement : MonoBehaviour
                 if (CheckForChangeOfPos() && !hasChangedLayers)
                 {
                     GetBeltPositions();
-                    currentId = GetId(currentBeltPositions, string.Empty);
+                    currentId = GetId(currentBeltPositions, string.Empty, false);
                     CheckIfEnteredOtherGroup();
                     overlappingPositions = new Vector3[0];
                     for (int i = 0; i < conveyorGroups.Count; i++)
@@ -134,7 +134,6 @@ public class BeltPlacement : MonoBehaviour
             }
         }
     }
-
     private void GetBeltPositions()
     {
         lastHitPoint = hitPoint;
@@ -163,12 +162,10 @@ public class BeltPlacement : MonoBehaviour
                 currentBeltPositions[i + distanceY] = new Vector3(startPos.x + (i * dir.x), currentLayer, currentBeltPositions[distanceY].z);
         }
     }
-
     private void ChangeAnchorPoint()
     {
         startPos = new Vector3(currentBeltPositions[currentBeltPositions.Length - 1].x, currentLayer, currentBeltPositions[currentBeltPositions.Length - 1].z);
     }
-
     private void CreateConveyorBeltGroupClassItem(ConveyorGroup newConveyorGroup)
     {
         SaveConveyorsPosition();
@@ -176,8 +173,7 @@ public class BeltPlacement : MonoBehaviour
         for (int i = 0; i < currentBeltGroupPositions.Length; i++)
             newConveyorGroup.conveyorsPos[i] = currentBeltGroupPositions[i];
 
-        newConveyorGroup.beltGroupId = GetId(currentBeltGroupPositions, string.Empty) + "-" + GenerateRandomString();
-        newConveyorGroup = MergeLinkedBeltGroups(newConveyorGroup);
+        newConveyorGroup.beltGroupId = GetId(currentBeltGroupPositions, string.Empty, false) + "-" + GenerateRandomString();
         if (currentSplitter != null)
         {
             if (currentSplitter.HasTwoOutputs)
@@ -189,6 +185,11 @@ public class BeltPlacement : MonoBehaviour
                 currentSplitter.output1Dir = currentBeltGroupPositions[1] - currentSplitter.splitterPos;
             currentSplitter.isSetInStone = true;
             newConveyorGroup.groupAttachedTo = groupAttachedTo;
+        }
+        else
+        {
+            DeleteOverlappingBelts();
+            newConveyorGroup = MergeLinkedBeltGroups(newConveyorGroup);
         }
 
         CreateTriggerBoxOnGroup(newConveyorGroup);
@@ -216,7 +217,6 @@ public class BeltPlacement : MonoBehaviour
         group.collider = group.conveyorGroupTransform.gameObject.GetComponent<BoxCollider>();
         group.collider.size = new Vector3(maxCorner.x - minCorner.x + 1, maxCorner.y - minCorner.y + 1, maxCorner.z - minCorner.z + 1);
     }
-
     private string[] CheckIfEnteredOtherGroup()
     {
         overlappedGroups = new string[0];
@@ -230,19 +230,6 @@ public class BeltPlacement : MonoBehaviour
         }
         return overlappedGroups;
     }
-
-    //private Vector3[] CheckForOverlap()
-    //{
-    //    int amountOfOverlap = 0;
-    //    Vector3[] overlappingPos = { };
-
-    //    for (int i = 0; i < currentBeltPositions.Length; i++)
-    //        for (int j = 0; j < currentBeltGroupPositions.Length; j++)
-    //            if (currentBeltPositions[i] == currentBeltGroupPositions[j])
-    //                overlappingPos = Append(overlappingPos, Vector3.up);
-    //    return overlappingPos;
-    //}
-
     private Vector3[] CheckForOverlap(Vector3[] array1, Vector3[] array2)
     {
         Vector3[] intersections = new Vector3[0];
@@ -251,7 +238,6 @@ public class BeltPlacement : MonoBehaviour
                 intersections = Append(intersections, array1[i]);
         return intersections;
     }
-
     private Vector3 GetMin(Vector3[] array)
     {
         float minX = array[0].x;
@@ -269,7 +255,6 @@ public class BeltPlacement : MonoBehaviour
         }
         return new Vector3(minX, minY, minZ);
     }
-
     private Vector3 GetMax(Vector3[] array)
     {
         float maxX = array[0].x;
@@ -287,7 +272,6 @@ public class BeltPlacement : MonoBehaviour
         }
         return new Vector3(maxX, maxY, maxZ);
     }
-
     private bool CheckForChangeOfPos()
     {
         ray = mainCam.ScreenPointToRay(Input.mousePosition);
@@ -303,7 +287,6 @@ public class BeltPlacement : MonoBehaviour
         }
         return false;
     }
-
     private void SaveConveyorsPosition()
     {
         Vector3[] newArray = new Vector3[currentBeltGroupPositions.Length + currentBeltPositions.Length];
@@ -315,7 +298,6 @@ public class BeltPlacement : MonoBehaviour
         currentBeltPositions = new Vector3[0];
         currentBeltGroupPositions = newArray;
     }
-
     private Vector3[] Append(Vector3[] array, Vector3 posToAppend)
     {
         Vector3[] newArray = new Vector3[array.Length + 1];
@@ -370,7 +352,7 @@ public class BeltPlacement : MonoBehaviour
             newArray[i] = array[i];
         return newArray;
     }
-    private string GetId(Vector3[] posArray, string lastId)
+    private string GetId(Vector3[] posArray, string lastId, bool isLast)
     {
         if (posArray.Length > 1)
         {
@@ -402,15 +384,20 @@ public class BeltPlacement : MonoBehaviour
         {
             return "1F";
         }
-        else if (lastId != string.Empty)
+        else if (!isLast)
         {
             for (int i = 0; i < lastId.Length; i++)
                 if (char.IsLetter(lastId[i]))
                     return "1" + lastId[i];
         }
-        return "ERROR";
+        else
+        {
+            for (int i = lastId.Length - 1; i > 0; i--)
+                if (char.IsLetter(lastId[i]))
+                    return "1" + lastId[i];
+        }
+        return " ";
     }
-
     private string GenerateRandomString()
     {
         int randomInt = UnityEngine.Random.Range(0, 9999);
@@ -455,7 +442,6 @@ public class BeltPlacement : MonoBehaviour
             }
         }
     }
-
     private void AddSplitter(ConveyorGroup conveyorGroup, Vector3 position, string outputId)
     {
         ConveyorGroup.Splitter newSplitter = new ConveyorGroup.Splitter();
@@ -522,7 +508,6 @@ public class BeltPlacement : MonoBehaviour
         for (int i = 0; i < overlappingPositions.Length; i++)
             groupUnder.conveyorsPos = RemoveFromArray(groupUnder.conveyorsPos, overlappingPositions[i]);
     }
-
     private void DisassociateGroup(ConveyorGroup group)
     {
         ConveyorGroup newGroup = new ConveyorGroup();
@@ -541,18 +526,18 @@ public class BeltPlacement : MonoBehaviour
             else
                 newBaseGroup.conveyorsPos = Append(newBaseGroup.conveyorsPos, group.conveyorsPos[i]);
         }
-        conveyorGroups.Remove(group);
-        for (int i = 0; i < gameObject.transform.childCount; i++)
-            if (gameObject.transform.GetChild(i).name == group.beltGroupId)
-                Destroy(gameObject.transform.GetChild(i).gameObject);
-        newBaseGroup.beltGroupId = GetId(newBaseGroup.conveyorsPos, group.beltGroupId) + "-" + GenerateRandomString();
+        DeleteGroup(group);
+
+        newBaseGroup.beltGroupId = GetId(newBaseGroup.conveyorsPos, group.beltGroupId, false) + "-" + GenerateRandomString();
+        Debug.Log(newBaseGroup.beltGroupId);
         CreateTriggerBoxOnGroup(newBaseGroup);
         CheckForSplitters(group, newBaseGroup);
         RebindAttachedSplitter(group, newBaseGroup);
         newBaseGroup.groupAttachedTo = group.groupAttachedTo;
         conveyorGroups.Add(newBaseGroup);
 
-        newGroup.beltGroupId = GetId(newGroup.conveyorsPos, group.beltGroupId) + "-" + GenerateRandomString();
+        newGroup.beltGroupId = GetId(newGroup.conveyorsPos, group.beltGroupId, true) + "-" + GenerateRandomString();
+        Debug.Log(newGroup.beltGroupId);
         CreateTriggerBoxOnGroup(newGroup);
         CheckForSplitters(group, newGroup);
         conveyorGroups.Add(newGroup);
@@ -563,18 +548,15 @@ public class BeltPlacement : MonoBehaviour
         {
             ConveyorGroup newGroup = new ConveyorGroup();
             newGroup.conveyorsPos = RemoveFromArray(group.conveyorsPos, hitPoint);
-            newGroup.beltGroupId = GetId(newGroup.conveyorsPos, group.beltGroupId) + "-" + GenerateRandomString();
+            newGroup.beltGroupId = GetId(newGroup.conveyorsPos, group.beltGroupId, false) + "-" + GenerateRandomString();
             CreateTriggerBoxOnGroup(newGroup);
             CheckForSplitters(group, newGroup);
             RebindAttachedSplitter(group, newGroup);
+            RebindGroupAttachedTo(newGroup);
             newGroup.groupAttachedTo = group.groupAttachedTo;
             conveyorGroups.Add(newGroup);
         }
-
-        conveyorGroups.Remove(group);
-        for (int i = 0; i < gameObject.transform.childCount; i++)
-            if (gameObject.transform.GetChild(i).name == group.beltGroupId)
-                Destroy(gameObject.transform.GetChild(i).gameObject);
+        DeleteGroup(group);
     }
     private void CheckForSplitters(ConveyorGroup originalGroup, ConveyorGroup newGroup)
     {
@@ -596,6 +578,13 @@ public class BeltPlacement : MonoBehaviour
                                 conveyorGroups[i].splitters[j].output2GroupId = newGroup.beltGroupId;
                         }
     }
+    private void RebindGroupAttachedTo(ConveyorGroup group)
+    {
+        for (int i = 0; i < group.splitters.Count; i++)
+            for (int j = 0; j < conveyorGroups.Count; j++)
+                if (group.splitters[i].output1GroupId == conveyorGroups[j].beltGroupId || group.splitters[i].output2GroupId == conveyorGroups[j].beltGroupId)
+                    conveyorGroups[j].groupAttachedTo = group.beltGroupId;
+    }
     private ConveyorGroup MergeLinkedBeltGroups(ConveyorGroup currentGroup)
     {
         Vector3 startDir = GetStartDir(currentGroup.beltGroupId);
@@ -611,7 +600,7 @@ public class BeltPlacement : MonoBehaviour
         RaycastHit[] hits = Physics.RaycastAll(ray);
         for (int i = 0; i < hits.Length; i++)
         {
-            Debug.Log(hits[i].collider.transform.position.y * 2 - 1 == currentGroup.conveyorsPos[currentGroup.conveyorsPos.Length - 1].y);
+            //Debug.Log(hits[i].collider.transform.position.y * 2 - 1 == currentGroup.conveyorsPos[currentGroup.conveyorsPos.Length - 1].y);
             if (hits[i].collider.CompareTag("BeltGroup") && hits[i].collider.transform.position.y * 2 - 1 == currentGroup.conveyorsPos[0].y)
                 intersectedGroupUnderName = hits[i].collider.name;
         }
@@ -620,12 +609,18 @@ public class BeltPlacement : MonoBehaviour
         hits = Physics.RaycastAll(ray);
         for (int i = 0; i < hits.Length; i++)
         {
-            Debug.Log(hits[i].collider.transform.position.y * 2 - 1 == currentGroup.conveyorsPos[currentGroup.conveyorsPos.Length - 1].y);
+            //Debug.Log(hits[i].collider.transform.position.y * 2 - 1 == currentGroup.conveyorsPos[currentGroup.conveyorsPos.Length - 1].y);
             if (hits[i].collider.CompareTag("BeltGroup") && hits[i].collider.transform.position.y * 2 - 1 == currentGroup.conveyorsPos[currentGroup.conveyorsPos.Length - 1].y)
                 intersectedGroupOverName = hits[i].collider.name;
 
         }
-
+        for (int i = 0; i < conveyorGroups.Count; i++)
+        {
+            if (intersectedGroupOverName == conveyorGroups[i].beltGroupId)
+                intersectedGroupOver = conveyorGroups[i];
+            if (intersectedGroupUnderName == conveyorGroups[i].beltGroupId)
+                intersectedGroupUnder = conveyorGroups[i];
+        }
         if (intersectedGroupOver != null && intersectedGroupUnder != null)
         {
             newGroup = MergeGroup(intersectedGroupUnder, currentGroup);
@@ -656,25 +651,6 @@ public class BeltPlacement : MonoBehaviour
         {
             return currentGroup;
         }
-
-        //for (int i = 0; i < conveyorGroups.Count; ++i)
-        //{
-        //    if (GetEndDir(conveyorGroups[i].beltGroupId) == startDir && conveyorGroups[i].conveyorsPos.Contains(currentGroup.conveyorsPos[0] - startDir))
-        //    {
-        //        newGroup = MergeGroup(conveyorGroups[i], currentGroup);
-        //        DeleteGroup(currentGroup);
-        //        DeleteGroup(conveyorGroups[i]);
-        //        return newGroup;
-        //    }
-        //    else if (GetStartDir(conveyorGroups[i].beltGroupId) == endDir && conveyorGroups[i].conveyorsPos.Contains(currentGroup.conveyorsPos[currentGroup.conveyorsPos.Length - 1] + endDir))
-        //    {
-        //        newGroup = MergeGroup(currentGroup, conveyorGroups[i]);
-        //        DeleteGroup(currentGroup);
-        //        DeleteGroup(conveyorGroups[i]);
-        //        return newGroup;
-        //    }
-        //}
-        //return currentGroup;
     }
     private ConveyorGroup MergeGroup(ConveyorGroup group1, ConveyorGroup group2)
     {
@@ -689,9 +665,96 @@ public class BeltPlacement : MonoBehaviour
         for (int i = 0; i < group2.splitters.Count; i++)
             newGroup.splitters.Add(group2.splitters[i]);
 
-        newGroup.beltGroupId = GetId(newGroup.conveyorsPos, string.Empty) + "-" + GenerateRandomString();
+        newGroup.beltGroupId = GetId(newGroup.conveyorsPos, string.Empty, false) + "-" + GenerateRandomString();
         newGroup.groupAttachedTo = group1.groupAttachedTo;
         return newGroup;
+    }
+    private void DeleteOverlappingBelts()
+    {
+        for (int i = 0; i < conveyorGroups.Count; i++)
+        {
+            if (overlappedGroups.Contains(conveyorGroups[i].beltGroupId))
+            {
+                Vector3[] conveyorPosBuffer = new Vector3[conveyorGroups[i].conveyorsPos.Length];
+                for (int j = 0; j < conveyorPosBuffer.Length; j++)
+                    conveyorPosBuffer[j] = conveyorGroups[i].conveyorsPos[j];
+                conveyorGroups[i].conveyorsPos = RemoveDuplicatedPos(conveyorGroups[i].conveyorsPos, overlappingPositions);
+                DissasociateUnconectedGroup(conveyorGroups[i], conveyorPosBuffer);
+            }
+        }
+    }
+    private Vector3[] RemoveDuplicatedPos(Vector3[] groupPos, Vector3[] overlappingPos)
+    {
+        int[] posToRemove = new int[groupPos.Length];
+        int newArrayLength = groupPos.Length;
+        for (int i = 0; i < groupPos.Length; i++)
+        {
+            if (overlappingPos.Contains(groupPos[i]))
+            {
+                posToRemove[i] = 1;
+                newArrayLength--;
+            }
+        }
+
+        Vector3[] newPos = new Vector3[newArrayLength];
+        int index = 0;
+        for (int i = 0; i < posToRemove.Length; i++)
+        {
+            if (posToRemove[i] == 0)
+            {
+                newPos[index] = groupPos[i];
+                index++;
+            }
+        }
+
+        return newPos;
+    }
+    private void DissasociateUnconectedGroup(ConveyorGroup Group, Vector3[] groupOldPos)
+    {
+        Vector3[] newGroupPos = new Vector3[0];
+        bool firstTime = true;
+        for (int i = 0; i < groupOldPos.Length; i++)
+        {
+            if (Group.conveyorsPos.Contains(groupOldPos[i]))
+                newGroupPos = Append(newGroupPos, groupOldPos[i]);
+            else if (newGroupPos.Length > 0)
+            {
+                ConveyorGroup newGroup = new ConveyorGroup();
+                newGroup.conveyorsPos = newGroupPos;
+                if (firstTime)
+                {
+                    newGroup.groupAttachedTo = Group.groupAttachedTo;
+                    firstTime = false;
+                }
+                for (int j = 0; j < Group.splitters.Count; j++)
+                    if (newGroup.conveyorsPos.Contains(Group.splitters[j].splitterPos))
+                        newGroup.splitters.Add(Group.splitters[j]);
+                newGroup.beltGroupId = GetId(newGroup.conveyorsPos, Group.beltGroupId, false) + "-" + GenerateRandomString();
+                CreateTriggerBoxOnGroup(newGroup);
+                conveyorGroups.Add(newGroup);
+                newGroupPos = new Vector3[0];
+            }
+        }
+        if (newGroupPos.Length > 0)
+        {
+            ConveyorGroup newGroup = new ConveyorGroup();
+            newGroup.conveyorsPos = newGroupPos;
+            if (firstTime)
+            {
+                newGroup.groupAttachedTo = Group.groupAttachedTo;
+                firstTime = false;
+            }
+            for (int j = 0; j < Group.splitters.Count; j++)
+                if (newGroup.conveyorsPos.Contains(Group.splitters[j].splitterPos))
+                    newGroup.splitters.Add(Group.splitters[j]);
+            newGroup.beltGroupId = GetId(newGroup.conveyorsPos, Group.beltGroupId, true) + "-" + GenerateRandomString();
+            CreateTriggerBoxOnGroup(newGroup);
+            conveyorGroups.Add(newGroup);
+            groupOldPos = RemoveDuplicatedPos(groupOldPos, newGroupPos);
+            newGroupPos = new Vector3[0];
+        }
+        if (!firstTime)
+            DeleteGroup(Group);
     }
     private void DeleteGroup(ConveyorGroup group)
     {
@@ -716,7 +779,7 @@ public class BeltPlacement : MonoBehaviour
     private Vector3 GetEndDir(string groupId)
     {
         char dir = ' ';
-        for (int i = groupId.Length; i > groupId.Length; i--)
+        for (int i = groupId.Length - 1; i > 0; i--)
         {
             if (char.IsLetter(groupId[i]))
             {
@@ -726,7 +789,6 @@ public class BeltPlacement : MonoBehaviour
         }
         return GetDirOfBelt(dir);
     }
-
     private char GetTypeOfBelt(Vector3 dir)
     {
         char typeOfBelt = 'F';
@@ -761,7 +823,6 @@ public class BeltPlacement : MonoBehaviour
             dirOfBelt = new Vector3(0f, -1f, 0f);
         return dirOfBelt;
     }
-
     private void CheckUsersInputs()
     {
         if (Input.GetKey(KeyCode.Mouse0))

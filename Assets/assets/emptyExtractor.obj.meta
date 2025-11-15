@@ -7,28 +7,8 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: cornerBeltMat
-    second: {fileID: 2100000, guid: b1ae04b6c0c65f14fa5140638809a77f, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
       name: emptyExtractorMat
     second: {fileID: 2100000, guid: 07b840d20cf34564c8d51e00bb1ea63d, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: mergerBeltMat
-    second: {fileID: 2100000, guid: fc707f1e0fb39914d8317f0e7006db05, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: splitterBeltMat
-    second: {fileID: 2100000, guid: 3465cb42aa21bc64f9e25005563ad756, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: straightBeltMat
-    second: {fileID: 2100000, guid: a9fa306395df98e4e821d8e746c91dce, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

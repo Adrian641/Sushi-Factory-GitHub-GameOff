@@ -11,6 +11,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using static BeltPlacement;
+using static UnityEngine.UI.GridLayoutGroup;
 
 public class BeltPlacement : MonoBehaviour
 {
@@ -67,7 +68,7 @@ public class BeltPlacement : MonoBehaviour
     private Vector3 lastHitPoint;
     private Vector3 startPos;
     private string currentId = "";
-    private char lastBeltType;
+    public char lastBeltType;
 
     public ChangeLayer layers;
     private int currentLayer = 0;
@@ -105,7 +106,7 @@ public class BeltPlacement : MonoBehaviour
 
     #endregion
 
-    [HideInInspector] public List<GameObject> allSelectedBelts;
+    public List<GameObject> allSelectedBelts;
     [HideInInspector] public List<GameObject> currentSelectedBelts;
 
     void Update()
@@ -117,7 +118,7 @@ public class BeltPlacement : MonoBehaviour
         if (isStartClickingMouse0)
         {
             FindStartPosition();
-            DrawSelectedBeltGroup("1F", startPos);
+            DrawSelectedBeltGroup("1F", startPos, ' ');
             startedBeltGroup = true;
         }
         else if (isHoldingMouse1)
@@ -134,8 +135,9 @@ public class BeltPlacement : MonoBehaviour
                 {
                     lastBeltType = GetLastBeltType();
                     ChangeAnchorPoint();
-                    SaveSelectedBelts();
+                    SaveSelectedBelts(true);
                     SaveConveyorsPosition(true);
+                    DrawSelectedBeltGroup("1" + char.ToString(lastBeltType), startPos, lastBeltType);
                 }
                 else if (CheckForChangeOfPos() && !hasChangedLayers)
                 {
@@ -145,20 +147,20 @@ public class BeltPlacement : MonoBehaviour
                     FindAllOverlappingGroup();
                     CheckForSplitter(currentId);
                     DeleteCurrentSelectedBelts();
-                    DrawSelectedBeltGroup(currentId, startPos);
+                    DrawSelectedBeltGroup(currentId, startPos, lastBeltType);
                 }
                 else if (hasChangedLayers && currentBeltPositions.Length != 0)
                 {
                     ChangeAnchorPoint();
                     SaveConveyorsPosition(false);
-                    SaveSelectedBelts();
-                    DrawSelectedBeltGroup(currentId, startPos);
+                    SaveSelectedBelts(false);
+                    DrawSelectedBeltGroup(currentId, startPos, lastBeltType);
                 }
                 layers.hasChangedLayer = false;
             }
             else if (isReleasingMouse0)
             {
-                SaveSelectedBelts();
+                SaveSelectedBelts(false);
                 DeleteAllSelectedBelts();
                 CreateConveyorBeltGroupClassItem(newConveyorGroup);
             }
@@ -899,8 +901,9 @@ public class BeltPlacement : MonoBehaviour
         for (int i = 0; i < allSelectedBelts.Count; i++)
             Destroy(allSelectedBelts[i]);
         allSelectedBelts.Clear();
+        lastBeltType = ' ';
     }
-    private void DrawSelectedBeltGroup(string currentId, Vector3 startPos)
+    private void DrawSelectedBeltGroup(string currentId, Vector3 startPos, char lockedOrientation)
     {
         int Yrotation = 0;
         string component = "";
@@ -909,6 +912,8 @@ public class BeltPlacement : MonoBehaviour
         Vector3 currenPos = startPos;
         bool drawCorner = false;
         bool willDrawCorner = false;
+        bool lockStartOrientation = true;
+        bool lockOrientation = true;
 
         for (int i = 0; i < currentId.Length; i++)
         {
@@ -922,6 +927,7 @@ public class BeltPlacement : MonoBehaviour
                     willDrawCorner = true;
                 if (i + 1 < currentId.Length)
                 {
+                    Debug.Log("should Be Happening only once!!!!");
                     lastType = currentId[i];
                     drawCorner = true;
                     amount--;
@@ -930,12 +936,26 @@ public class BeltPlacement : MonoBehaviour
                 Yrotation = GetRotation(currentId[i]);
                 for (int j = 0; j < amount; j++)
                 {
-                    if (willDrawCorner)
+                    if (lockStartOrientation && (lockedOrientation == 'F' || lockedOrientation == 'B' || lockedOrientation == 'L' || lockedOrientation == 'R') && GetDirOfBelt(lockedOrientation) != GetStartDir(currentId) && (GetStartDir(currentId) != GetDirOfBelt(lockedOrientation) * -1))
+                    {
+                        GameObject corner = Instantiate(cornerBelt, gameObject.transform);
+                        corner.transform.position = currenPos;
+                        corner.transform.eulerAngles = new Vector3(0, GetCornerRotation(lockedOrientation, currentId[i]).y, 0);
+                        float newZScale = GetCornerRotation(lockedOrientation, currentId[i]).x;
+                        corner.transform.localScale = new Vector3(newZScale, 1, 1);
+                        ApplyMaterial(corner, selectedMaterial);
+                        currenPos += currentDir;
+                        currentSelectedBelts.Add(corner);
+                        lockStartOrientation = false;
+                        continue;
+                    }
+                    else if (willDrawCorner)
                     {
                         GameObject corner = Instantiate(cornerBelt, gameObject.transform);
                         corner.transform.position = currenPos;
                         corner.transform.eulerAngles = new Vector3(0, GetCornerRotation(lastType, currentId[i]).y, 0);
                         corner.transform.localScale = new Vector3(GetCornerRotation(lastType, currentId[i]).x, 1, 1);
+                        ApplyMaterial(corner, selectedMaterial);
                         currenPos += currentDir;
                         currentSelectedBelts.Add(corner);
                         willDrawCorner = false;
@@ -944,16 +964,31 @@ public class BeltPlacement : MonoBehaviour
                     GameObject belt = Instantiate(straightBelt, gameObject.transform);
                     belt.transform.position = currenPos;
                     belt.transform.eulerAngles = new Vector3(0, Yrotation, 0);
+                    ApplyMaterial(belt, selectedMaterial);
                     currenPos += currentDir;
                     currentSelectedBelts.Add(belt);
+                    lockStartOrientation = false;
                 }
             }
         }
     }
-    private void SaveSelectedBelts()
+    private void SaveSelectedBelts(bool removeLastBelt)
     {
-        allSelectedBelts.AddRange(currentSelectedBelts);
-        currentSelectedBelts.Clear();
+        if (currentSelectedBelts.Count > 0)
+        {
+            allSelectedBelts.AddRange(currentSelectedBelts);
+            currentSelectedBelts.Clear();
+            if (removeLastBelt)
+            {
+                Destroy(allSelectedBelts[allSelectedBelts.Count - 1]);
+                allSelectedBelts.RemoveAt(allSelectedBelts.Count - 1);
+            }
+        }
+    }
+    private void ApplyMaterial(GameObject gameObject, Material material)
+    {
+        Transform meshTr = gameObject.transform.GetChild(0);
+        meshTr.GetComponent<MeshRenderer>().material = material;
     }
     private int GetRotation(char type)
     {

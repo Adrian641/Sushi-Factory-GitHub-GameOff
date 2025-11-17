@@ -526,6 +526,7 @@ MonoBehaviour:
   BeltGroupPrefab: {fileID: 2528400078919363887, guid: f61c9ed3a0966a24fa8d6c0bab209761,
     type: 3}
   mainCam: {fileID: 330585545}
+  lastBeltType: 256
   layers: {fileID: 1393824109}
   straightBelt: {fileID: 4127120408061879378, guid: cde35b0e840ee4a4a926d7c2d229488e,
     type: 3}
@@ -542,9 +543,10 @@ MonoBehaviour:
   bottomVertical: {fileID: 0}
   topVertical: {fileID: 0}
   Vertical: {fileID: 0}
-  selectedMaterial: {fileID: 0}
-  overlappingMaterial: {fileID: 0}
-  selectedBelts: []
+  selectedMaterial: {fileID: 2100000, guid: d040e0ba56fe1414590293d8ad470fe2, type: 2}
+  overlappingMaterial: {fileID: 2100000, guid: 240d69196ad656a4f98190f5529e8aca, type: 2}
+  allSelectedBelts: []
+  currentSelectedBelts: []
 --- !u!4 &1875321384
 Transform:
   m_ObjectHideFlags: 0

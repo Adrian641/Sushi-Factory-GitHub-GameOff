@@ -249,6 +249,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: verticalBeltBot
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 3b66070899051694a89de39c93f923a4,
+        type: 3}
+      propertyPath: m_TagString
+      value: Belt
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -260,7 +265,11 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 8059553698227803777}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3b66070899051694a89de39c93f923a4,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -6216477673124283635}
   m_SourcePrefab: {fileID: 100100000, guid: 3b66070899051694a89de39c93f923a4, type: 3}
 --- !u!4 &2856037014883117506 stripped
 Transform:
@@ -268,3 +277,30 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 2317128349446884905}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &3236256504147997560 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 3b66070899051694a89de39c93f923a4,
+    type: 3}
+  m_PrefabInstance: {fileID: 2317128349446884905}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &-6216477673124283635
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3236256504147997560}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.60224533, y: 0.054543518, z: 0.60233307}
+  m_Center: {x: 0, y: 0, z: 0}

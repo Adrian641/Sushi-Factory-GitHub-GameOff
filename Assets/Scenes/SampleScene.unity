@@ -526,14 +526,25 @@ MonoBehaviour:
   BeltGroupPrefab: {fileID: 2528400078919363887, guid: f61c9ed3a0966a24fa8d6c0bab209761,
     type: 3}
   mainCam: {fileID: 330585545}
-  hitPoint: {x: 0, y: 0, z: 0}
-  lastHitPoint: {x: 0, y: 0, z: 0}
-  startPos: {x: 0, y: 0, z: 0}
   layers: {fileID: 1393824109}
-  currentBeltPositions: []
-  currentBeltGroupPositions: []
-  overlappingPositions: []
-  overlappedGroups: []
+  straightBelt: {fileID: 4127120408061879378, guid: cde35b0e840ee4a4a926d7c2d229488e,
+    type: 3}
+  cornerBelt: {fileID: 5094536905016339225, guid: 8f0049c396a9edd4fb4ce011dfba014e,
+    type: 3}
+  fullMerge: {fileID: 0}
+  leftMerger: {fileID: 0}
+  rightMerger: {fileID: 0}
+  cornerMerger: {fileID: 0}
+  leftSplitter: {fileID: 0}
+  rightSplitter: {fileID: 0}
+  cornerSplitter: {fileID: 0}
+  fullSplitter: {fileID: 0}
+  bottomVertical: {fileID: 0}
+  topVertical: {fileID: 0}
+  Vertical: {fileID: 0}
+  selectedMaterial: {fileID: 0}
+  overlappingMaterial: {fileID: 0}
+  selectedBelts: []
 --- !u!4 &1875321384
 Transform:
   m_ObjectHideFlags: 0

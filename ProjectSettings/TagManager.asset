@@ -6,6 +6,7 @@ TagManager:
   tags:
   - Grid
   - BeltGroup
+  - Belt
   layers:
   - Default
   - TransparentFX

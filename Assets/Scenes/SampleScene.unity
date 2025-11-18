@@ -545,6 +545,7 @@ MonoBehaviour:
   Vertical: {fileID: 0}
   selectedMaterial: {fileID: 2100000, guid: d040e0ba56fe1414590293d8ad470fe2, type: 2}
   overlappingMaterial: {fileID: 2100000, guid: 240d69196ad656a4f98190f5529e8aca, type: 2}
+  normalMaterial: {fileID: 2100000, guid: a9fa306395df98e4e821d8e746c91dce, type: 2}
   allSelectedBelts: []
   currentSelectedBelts: []
 --- !u!4 &1875321384

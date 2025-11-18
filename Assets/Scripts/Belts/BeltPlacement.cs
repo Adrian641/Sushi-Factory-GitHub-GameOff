@@ -103,6 +103,7 @@ public class BeltPlacement : MonoBehaviour
 
     public Material selectedMaterial;
     public Material overlappingMaterial;
+    public Material normalMaterial;
 
     #endregion
 
@@ -159,10 +160,11 @@ public class BeltPlacement : MonoBehaviour
                 layers.hasChangedLayer = false;
             }
             else if (isReleasingMouse0)
-            {
-                SaveSelectedBelts(false);
-                DeleteAllSelectedBelts();
+            {                
                 CreateConveyorBeltGroupClassItem(newConveyorGroup);
+                SaveSelectedBelts(false);
+                DrawFinalBelts(newConveyorGroup.conveyorGroupTransform);
+                DeleteAllSelectedBelts();
             }
         }
     }
@@ -569,11 +571,13 @@ public class BeltPlacement : MonoBehaviour
         RebindAttachedSplitter(group, newBaseGroup);
         newBaseGroup.groupAttachedTo = group.groupAttachedTo;
         conveyorGroups.Add(newBaseGroup);
+        RedrawBelts(newBaseGroup);
 
         newGroup.beltGroupId = GetId(newGroup.conveyorsPos, group.beltGroupId, true) + "-" + GenerateRandomString();
         CreateTriggerBoxOnGroup(newGroup);
         CheckForSplitters(group, newGroup);
         conveyorGroups.Add(newGroup);
+        RedrawBelts(newGroup);
     }
     private void UpdateGroup(ConveyorGroup group)
     {
@@ -588,6 +592,7 @@ public class BeltPlacement : MonoBehaviour
             RebindGroupAttachedTo(newGroup);
             newGroup.groupAttachedTo = group.groupAttachedTo;
             conveyorGroups.Add(newGroup);
+            RedrawBelts(newGroup);
         }
         DeleteGroup(group);
     }
@@ -643,7 +648,6 @@ public class BeltPlacement : MonoBehaviour
         {
             if (hits[i].collider.CompareTag("BeltGroup") && hits[i].collider.transform.position.y * 2 - 1 == currentGroup.conveyorsPos[currentGroup.conveyorsPos.Length - 1].y)
                 intersectedGroupOverName = hits[i].collider.name;
-
         }
         for (int i = 0; i < conveyorGroups.Count; i++)
         {
@@ -913,7 +917,6 @@ public class BeltPlacement : MonoBehaviour
         bool drawCorner = false;
         bool willDrawCorner = false;
         bool lockStartOrientation = true;
-        bool lockOrientation = true;
 
         for (int i = 0; i < currentId.Length; i++)
         {
@@ -927,7 +930,6 @@ public class BeltPlacement : MonoBehaviour
                     willDrawCorner = true;
                 if (i + 1 < currentId.Length)
                 {
-                    Debug.Log("should Be Happening only once!!!!");
                     lastType = currentId[i];
                     drawCorner = true;
                     amount--;
@@ -989,6 +991,62 @@ public class BeltPlacement : MonoBehaviour
     {
         Transform meshTr = gameObject.transform.GetChild(0);
         meshTr.GetComponent<MeshRenderer>().material = material;
+    }
+    private void DrawFinalBelts(Transform parent)
+    {
+        for (int i = 0; i < allSelectedBelts.Count; i++)
+        {
+            GameObject currentBelt = Instantiate(allSelectedBelts[i], parent);
+            currentBelt.transform.position = allSelectedBelts[i].transform.position;
+            ApplyMaterial(currentBelt, normalMaterial);
+        }
+    }
+    private void RedrawBelts(ConveyorGroup group)
+    {
+        //List<Vector3> splitterPos = new List<Vector3>(); // TODO : Account for splitter when Updating a group's belts
+        //for (int i = 0; i < group.splitters.Count; i++)
+        //    splitterPos.Add(group.splitters[i].splitterPos);
+
+        string currentId = group.beltGroupId;
+        int Yrotation = 0;
+        string component = "";
+        char lastType = ' ';
+        int amount = 0;
+        Vector3 currentPos = group.conveyorsPos[0];
+
+        for (int i = 0; i < currentId.Length; i++)
+        {
+            if (char.IsDigit(currentId[i]))
+                component += currentId[i];
+            if (char.IsLetter(currentId[i]))
+            {
+                Vector3 currentDir = GetDirOfBelt(currentId[i]);
+                amount = int.Parse(component);
+                if (currentId[i + 1] != '-')
+                    amount--;
+                component = "";
+                Yrotation = GetRotation(currentId[i]);
+                for (int j = 0; j < amount; j++)
+                {
+                    if (lastType != ' ')
+                    {
+                        GameObject corner = Instantiate(cornerBelt, group.conveyorGroupTransform);
+                        corner.transform.position = currentPos;
+                        corner.transform.eulerAngles = new Vector3(0, GetCornerRotation(lastType, currentId[i]).y, 0);
+                        corner.transform.localScale = new Vector3(GetCornerRotation(lastType, currentId[i]).x, 1, 1);
+                        currentPos += currentDir;
+                        lastType = ' ';
+                        continue;
+                    }
+                    GameObject belt = Instantiate(straightBelt, group.conveyorGroupTransform);
+                    belt.transform.position = currentPos;
+                    belt.transform.eulerAngles = new Vector3(0, Yrotation, 0);
+                    currentPos += currentDir;
+                }
+                lastType = currentId[i];
+            }
+        }
+
     }
     private int GetRotation(char type)
     {

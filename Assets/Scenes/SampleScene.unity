@@ -536,10 +536,14 @@ MonoBehaviour:
   leftMerger: {fileID: 0}
   rightMerger: {fileID: 0}
   cornerMerger: {fileID: 0}
-  leftSplitter: {fileID: 0}
-  rightSplitter: {fileID: 0}
-  cornerSplitter: {fileID: 0}
-  fullSplitter: {fileID: 0}
+  leftSplitter: {fileID: 1851711731612091637, guid: 3fea625f73130b247ad13f04b46d04df,
+    type: 3}
+  rightSplitter: {fileID: 7114202267062971161, guid: d69806e764bd00840a6f424a4b2d580c,
+    type: 3}
+  cornerSplitter: {fileID: 8009336370997388590, guid: ff8bae94594d4a94d8b1edbac0e99a38,
+    type: 3}
+  fullSplitter: {fileID: 6346841733225021893, guid: 71a1ec3bb03090a4d92162ebcca530bc,
+    type: 3}
   bottomVertical: {fileID: 0}
   topVertical: {fileID: 0}
   Vertical: {fileID: 0}

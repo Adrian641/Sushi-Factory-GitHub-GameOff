@@ -19,22 +19,22 @@ public class BeltPlacement : MonoBehaviour
     [System.Serializable]
     public class ConveyorGroup
     {
-        public Transform conveyorGroupTransform;
-        public BoxCollider collider;
+        [HideInInspector] public Transform conveyorGroupTransform;
+        [HideInInspector] public BoxCollider collider;
         public Vector3[] conveyorsPos = { };
         public string beltGroupId;
-        public string groupAttachedTo = string.Empty;
+        [HideInInspector] public string groupAttachedTo = string.Empty;
 
         [System.Serializable]
         public class Splitter
         {
             public Vector3 splitterPos;
-            public bool HasTwoOutputs;
-            public Vector3 output1Dir;
-            public Vector3 output2Dir;
+            [HideInInspector] public bool HasTwoOutputs;
+            [HideInInspector] public Vector3 output1Dir;
+            [HideInInspector] public Vector3 output2Dir;
             public string output1GroupId;
             public string output2GroupId;
-            public bool isSetInStone;
+            [HideInInspector] public bool isSetInStone;
         }
 
         [System.Serializable]
@@ -44,7 +44,7 @@ public class BeltPlacement : MonoBehaviour
             public Vector3 positionMergedInto;
         }
         public List<Splitter> splitters = new List<Splitter>();
-        public Merger merger;
+        [HideInInspector] public Merger merger;
     }
 
     [SerializeField] private List<ConveyorGroup> conveyorGroups;
@@ -107,7 +107,7 @@ public class BeltPlacement : MonoBehaviour
 
     #endregion
 
-    public List<GameObject> allSelectedBelts;
+    [HideInInspector] public List<GameObject> allSelectedBelts;
     [HideInInspector] public List<GameObject> currentSelectedBelts;
 
     void Update()
@@ -160,8 +160,8 @@ public class BeltPlacement : MonoBehaviour
                 layers.hasChangedLayer = false;
             }
             else if (isReleasingMouse0)
-            {                
-                CreateConveyorBeltGroupClassItem(newConveyorGroup);
+            {
+                newConveyorGroup = CreateConveyorBeltGroupClassItem(newConveyorGroup);
                 SaveSelectedBelts(false);
                 DrawFinalBelts(newConveyorGroup.conveyorGroupTransform);
                 DeleteAllSelectedBelts();
@@ -206,7 +206,7 @@ public class BeltPlacement : MonoBehaviour
     {
         startPos = new Vector3(currentBeltPositions[currentBeltPositions.Length - 1].x, currentLayer, currentBeltPositions[currentBeltPositions.Length - 1].z);
     }
-    private void CreateConveyorBeltGroupClassItem(ConveyorGroup newConveyorGroup)
+    private ConveyorGroup CreateConveyorBeltGroupClassItem(ConveyorGroup newConveyorGroup)
     {
         SaveConveyorsPosition(false);
         newConveyorGroup.conveyorsPos = new Vector3[currentBeltGroupPositions.Length];
@@ -225,6 +225,7 @@ public class BeltPlacement : MonoBehaviour
                 currentSplitter.output1Dir = currentBeltGroupPositions[1] - currentSplitter.splitterPos;
             currentSplitter.isSetInStone = true;
             newConveyorGroup.groupAttachedTo = groupAttachedTo;
+
         }
         else
         {
@@ -233,6 +234,7 @@ public class BeltPlacement : MonoBehaviour
         }
 
         CreateTriggerBoxOnGroup(newConveyorGroup);
+        Debug.Log(newConveyorGroup.conveyorGroupTransform.name);
 
         conveyorGroups.Add(newConveyorGroup);
 
@@ -244,6 +246,7 @@ public class BeltPlacement : MonoBehaviour
         currentBeltGroupPositions = new Vector3[0];
         overlappingPositions = new Vector3[0];
         overlappedGroups = new string[0];
+        return newConveyorGroup;
     }
     private void CreateTriggerBoxOnGroup(ConveyorGroup group)
     {
@@ -477,6 +480,7 @@ public class BeltPlacement : MonoBehaviour
                                 ClearSecondOutput(conveyorGroups[i].splitters[j]);
                             else if (!removeCurrentSplitter && conveyorGroups[i].splitters[j].output1Dir != currentBeltPositions[1] - currentBeltPositions[0] && conveyorGroups[i].splitters[j].isSetInStone)
                                 AddOutputToSplitter(conveyorGroups[i].splitters[j], currentBeltPositions[0], currentId);
+                            DrawSplitters(conveyorGroups[i]);
                             break;
                         }
                     }
@@ -638,7 +642,7 @@ public class BeltPlacement : MonoBehaviour
         RaycastHit[] hits = Physics.RaycastAll(ray);
         for (int i = 0; i < hits.Length; i++)
         {
-            if (hits[i].collider.CompareTag("BeltGroup") && hits[i].collider.transform.position.y * 2 - 1 == currentGroup.conveyorsPos[0].y)
+            if (hits[i].collider.CompareTag("BeltGroup") && hits[i].collider.transform.position.y * 2 - 1 == currentGroup.conveyorsPos[0].y && GetStartDir(currentGroup.beltGroupId) == GetEndDir(hits[i].collider.name))
                 intersectedGroupUnderName = hits[i].collider.name;
         }
 
@@ -646,7 +650,7 @@ public class BeltPlacement : MonoBehaviour
         hits = Physics.RaycastAll(ray);
         for (int i = 0; i < hits.Length; i++)
         {
-            if (hits[i].collider.CompareTag("BeltGroup") && hits[i].collider.transform.position.y * 2 - 1 == currentGroup.conveyorsPos[currentGroup.conveyorsPos.Length - 1].y)
+            if (hits[i].collider.CompareTag("BeltGroup") && hits[i].collider.transform.position.y * 2 - 1 == currentGroup.conveyorsPos[currentGroup.conveyorsPos.Length - 1].y && GetEndDir(currentGroup.beltGroupId) == GetStartDir(hits[i].collider.name))
                 intersectedGroupOverName = hits[i].collider.name;
         }
         for (int i = 0; i < conveyorGroups.Count; i++)
@@ -700,6 +704,13 @@ public class BeltPlacement : MonoBehaviour
         for (int i = 0; i < group2.splitters.Count; i++)
             newGroup.splitters.Add(group2.splitters[i]);
 
+        List<GameObject> newBelts = new List<GameObject>();
+        for (int i = 0; i < group1.conveyorGroupTransform.childCount; i++)
+            newBelts.Add(group1.conveyorGroupTransform.GetChild(i).gameObject);
+        newBelts.AddRange(allSelectedBelts);
+        allSelectedBelts.Clear();
+        allSelectedBelts = newBelts;
+
         newGroup.beltGroupId = GetId(newGroup.conveyorsPos, string.Empty, false) + "-" + GenerateRandomString();
         newGroup.groupAttachedTo = group1.groupAttachedTo;
         return newGroup;
@@ -744,7 +755,7 @@ public class BeltPlacement : MonoBehaviour
 
         return newPos;
     }
-    private void DissasociateUnconectedGroup(ConveyorGroup Group, Vector3[] groupOldPos)
+    private void DissasociateUnconectedGroup(ConveyorGroup Group, Vector3[] groupOldPos) // TODO : take in consideration when the new group's position is zero or has been fully overlapped
     {
         Vector3[] newGroupPos = new Vector3[0];
         bool firstTime = true;
@@ -768,6 +779,7 @@ public class BeltPlacement : MonoBehaviour
                 CreateTriggerBoxOnGroup(newGroup);
                 conveyorGroups.Add(newGroup);
                 newGroupPos = new Vector3[0];
+                RedrawBelts(newGroup);
             }
         }
         if (newGroupPos.Length > 0)
@@ -787,6 +799,7 @@ public class BeltPlacement : MonoBehaviour
             conveyorGroups.Add(newGroup);
             groupOldPos = RemoveDuplicatedPos(groupOldPos, newGroupPos);
             newGroupPos = new Vector3[0];
+            RedrawBelts(newGroup);
         }
         if (!firstTime)
             DeleteGroup(Group);
@@ -994,6 +1007,7 @@ public class BeltPlacement : MonoBehaviour
     }
     private void DrawFinalBelts(Transform parent)
     {
+        Debug.Log(parent.name);
         for (int i = 0; i < allSelectedBelts.Count; i++)
         {
             GameObject currentBelt = Instantiate(allSelectedBelts[i], parent);
@@ -1046,7 +1060,75 @@ public class BeltPlacement : MonoBehaviour
                 lastType = currentId[i];
             }
         }
+    }
+    private void DrawSplitters(ConveyorGroup group)
+    {
+        Vector3 downDir = Vector3.zero;
+        Vector3 upDir = Vector3.zero;
+        for (int i = 0; i < group.splitters.Count; i++)
+        {
+            GameObject splitterToDraw;
+            int splitterPosIndex = -1;
+            DeleteAllBeltsAtPos(group.splitters[i].splitterPos);
+            for (int j = 0; j < group.conveyorsPos.Length; j++)
+            {
+                if (group.conveyorsPos[j] == group.splitters[i].splitterPos)
+                {
+                    splitterPosIndex = j;
+                    if (splitterPosIndex + 1 == group.conveyorsPos.Length)
+                        upDir = GetEndDir(group.beltGroupId);
+                    else
+                        upDir = group.conveyorsPos[splitterPosIndex + 1] - group.conveyorsPos[splitterPosIndex];
+                    if (j == 0)
+                        downDir = GetStartDir(group.beltGroupId);
+                    else
+                        downDir = group.conveyorsPos[splitterPosIndex] - group.conveyorsPos[splitterPosIndex - 1];
+                    break;
+                }
+                splitterToDraw = FindSplitterObj(upDir, downDir, group.splitters[i]);
+                splitterToDraw = Instantiate(splitterToDraw, group.conveyorGroupTransform);
+                splitterToDraw.transform.position = group.splitters[i].splitterPos;
+            }
+        }
+    }
+    private GameObject FindSplitterObj(Vector3 upDir, Vector3 downDir, ConveyorGroup.Splitter splitter)
+    {
+        bool isStraightSplitter = false;
+        if (upDir * -1 == downDir)
+            isStraightSplitter = true;
 
+        if (isStraightSplitter && !splitter.HasTwoOutputs)
+        {
+            if (splitter.output1Dir == Vector3.right || splitter.output1Dir == Vector3.forward)
+                return leftSplitter;
+            else
+                return rightSplitter;
+        }
+        else if (isStraightSplitter && splitter.HasTwoOutputs)
+        {
+            return fullSplitter;
+        }
+        else if (!isStraightSplitter && !splitter.HasTwoOutputs)
+        {
+            if (upDir == splitter.output1Dir * -1)
+                return cornerSplitter;
+            else
+            {
+                if (upDir == Vector3.right || upDir == Vector3.forward)
+                    return rightSplitter;
+                else
+                    return leftSplitter;
+            }
+        }
+        return null;
+    }
+    private void DeleteAllBeltsAtPos(Vector3 pos)
+    {
+        Ray ray = new Ray(pos + Vector3.up / 2, Vector3.down);
+        RaycastHit[] hits = Physics.RaycastAll(ray, 1f);
+        for (int i = 0; i < hits.Length; i++)
+            if (hits[i].collider.CompareTag("Belt"))
+                Destroy(hits[i].collider.gameObject);
     }
     private int GetRotation(char type)
     {

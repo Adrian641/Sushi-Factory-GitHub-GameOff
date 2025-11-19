@@ -108,7 +108,7 @@ public class BeltPlacement : MonoBehaviour
     #endregion
 
     [HideInInspector] public List<GameObject> allSelectedBelts;
-    [HideInInspector] public List<GameObject> currentSelectedBelts;
+     public List<GameObject> currentSelectedBelts;
 
     void Update()
     {
@@ -129,6 +129,7 @@ public class BeltPlacement : MonoBehaviour
         }
         if (startedBeltGroup)
         {
+            bool madeFirstPath = false;
             ConveyorGroup newConveyorGroup = new ConveyorGroup();
             if (isHoldingMouse0)
             {
@@ -139,6 +140,7 @@ public class BeltPlacement : MonoBehaviour
                     SaveSelectedBelts(true);
                     SaveConveyorsPosition(true);
                     DrawSelectedBeltGroup("1" + char.ToString(lastBeltType), startPos, lastBeltType);
+                    madeFirstPath = true;
                 }
                 else if (CheckForChangeOfPos() && !hasChangedLayers)
                 {
@@ -146,8 +148,9 @@ public class BeltPlacement : MonoBehaviour
                     currentId = GetId(currentBeltPositions, string.Empty, false);
                     CheckIfEnteredOtherGroup();
                     FindAllOverlappingGroup();
-                    CheckForSplitter(currentId);
                     DeleteCurrentSelectedBelts();
+                    if (!madeFirstPath)
+                        CheckForSplitter(currentId);
                     DrawSelectedBeltGroup(currentId, startPos, lastBeltType);
                 }
                 else if (hasChangedLayers && currentBeltPositions.Length != 0)
@@ -156,6 +159,7 @@ public class BeltPlacement : MonoBehaviour
                     SaveConveyorsPosition(false);
                     SaveSelectedBelts(false);
                     DrawSelectedBeltGroup(currentId, startPos, lastBeltType);
+                    madeFirstPath = true;
                 }
                 layers.hasChangedLayer = false;
             }
@@ -926,10 +930,12 @@ public class BeltPlacement : MonoBehaviour
         string component = "";
         char lastType = ' ';
         int amount = 0;
-        Vector3 currenPos = startPos;
+        Vector3 currentPos = startPos;
         bool drawCorner = false;
         bool willDrawCorner = false;
         bool lockStartOrientation = true;
+
+        bool containsSplitter = false;
 
         for (int i = 0; i < currentId.Length; i++)
         {
@@ -947,6 +953,12 @@ public class BeltPlacement : MonoBehaviour
                     drawCorner = true;
                     amount--;
                 }
+                if (currentSelectedBelts.Count != 0 && !containsSplitter)
+                {
+                    amount--;
+                    currentPos += GetStartDir(currentId);
+                    containsSplitter = true;
+                }
                 component = "";
                 Yrotation = GetRotation(currentId[i]);
                 for (int j = 0; j < amount; j++)
@@ -954,12 +966,12 @@ public class BeltPlacement : MonoBehaviour
                     if (lockStartOrientation && (lockedOrientation == 'F' || lockedOrientation == 'B' || lockedOrientation == 'L' || lockedOrientation == 'R') && GetDirOfBelt(lockedOrientation) != GetStartDir(currentId) && (GetStartDir(currentId) != GetDirOfBelt(lockedOrientation) * -1))
                     {
                         GameObject corner = Instantiate(cornerBelt, gameObject.transform);
-                        corner.transform.position = currenPos;
+                        corner.transform.position = currentPos;
                         corner.transform.eulerAngles = new Vector3(0, GetCornerRotation(lockedOrientation, currentId[i]).y, 0);
                         float newZScale = GetCornerRotation(lockedOrientation, currentId[i]).x;
                         corner.transform.localScale = new Vector3(newZScale, 1, 1);
                         ApplyMaterial(corner, selectedMaterial);
-                        currenPos += currentDir;
+                        currentPos += currentDir;
                         currentSelectedBelts.Add(corner);
                         lockStartOrientation = false;
                         continue;
@@ -967,23 +979,24 @@ public class BeltPlacement : MonoBehaviour
                     else if (willDrawCorner)
                     {
                         GameObject corner = Instantiate(cornerBelt, gameObject.transform);
-                        corner.transform.position = currenPos;
+                        corner.transform.position = currentPos;
                         corner.transform.eulerAngles = new Vector3(0, GetCornerRotation(lastType, currentId[i]).y, 0);
                         corner.transform.localScale = new Vector3(GetCornerRotation(lastType, currentId[i]).x, 1, 1);
                         ApplyMaterial(corner, selectedMaterial);
-                        currenPos += currentDir;
+                        currentPos += currentDir;
                         currentSelectedBelts.Add(corner);
                         willDrawCorner = false;
                         continue;
                     }
                     GameObject belt = Instantiate(straightBelt, gameObject.transform);
-                    belt.transform.position = currenPos;
+                    belt.transform.position = currentPos;
                     belt.transform.eulerAngles = new Vector3(0, Yrotation, 0);
                     ApplyMaterial(belt, selectedMaterial);
-                    currenPos += currentDir;
+                    currentPos += currentDir;
                     currentSelectedBelts.Add(belt);
                     lockStartOrientation = false;
                 }
+                containsSplitter = true;
             }
         }
     }
@@ -1083,11 +1096,12 @@ public class BeltPlacement : MonoBehaviour
                         downDir = GetStartDir(group.beltGroupId);
                     else
                         downDir = group.conveyorsPos[splitterPosIndex] - group.conveyorsPos[splitterPosIndex - 1];
-                    break;
+                    splitterToDraw = FindSplitterObj(upDir, downDir, group.splitters[i]);
+                    splitterToDraw = Instantiate(splitterToDraw);
+                    splitterToDraw.transform.position = group.splitters[i].splitterPos;
+                    ApplyMaterial(splitterToDraw, selectedMaterial);
+                    currentSelectedBelts.Add(splitterToDraw);
                 }
-                splitterToDraw = FindSplitterObj(upDir, downDir, group.splitters[i]);
-                splitterToDraw = Instantiate(splitterToDraw, group.conveyorGroupTransform);
-                splitterToDraw.transform.position = group.splitters[i].splitterPos;
             }
         }
     }

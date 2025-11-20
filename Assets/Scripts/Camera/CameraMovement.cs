@@ -74,6 +74,8 @@ public class CameraMovement : MonoBehaviour
 
             verticalRot = Mathf.Clamp(verticalRot, minRot, maxRot);
 
+            transform.rotation = Quaternion.Euler(0f, horizonRot, 0f);
+
             dist = Vector3.Distance(cam.transform.position, floorAim.transform.position);
             Vector3 offset = Quaternion.Euler(verticalRot, horizonRot, 0f) * Vector3.back * dist;
 

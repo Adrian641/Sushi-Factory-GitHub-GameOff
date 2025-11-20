@@ -12,7 +12,6 @@ public class CameraMovement : MonoBehaviour
     [SerializeField] private float zoomSpeed = 5f;
     [SerializeField] private float minZoomDistance = 3f;
     [SerializeField] private float maxZoomDistance = 20f;
-    [SerializeField] private float zoomSmoothTime = 0.1f;
 
     [Header("---Camera Orbit---")]
     [SerializeField] private float orbitSpeed = 5f;
@@ -23,7 +22,6 @@ public class CameraMovement : MonoBehaviour
     [SerializeField] GameObject cam;
 
     private Vector3 velocity;
-    private float zoomVelocity = 0f;
     private float horizonRot;
     private float verticalRot;
 
@@ -61,9 +59,9 @@ public class CameraMovement : MonoBehaviour
             float currentDistance = Vector3.Distance(cam.transform.position, floorAim.transform.position);
             float targetDistance = currentDistance - scroll * zoomSpeed;
             targetDistance = Mathf.Clamp(targetDistance, minZoomDistance, maxZoomDistance);
-            float smoothDistance = Mathf.SmoothDamp(currentDistance, targetDistance, ref zoomVelocity, zoomSmoothTime);
+            float newDistance = Mathf.Clamp(currentDistance - scroll * zoomSpeed, minZoomDistance, maxZoomDistance);
 
-            cam.transform.position = floorAim.transform.position + zoomLine * smoothDistance;
+            cam.transform.position = floorAim.transform.position + zoomLine * newDistance;
         }
 
         if (Input.GetKey(KeyCode.Mouse2))

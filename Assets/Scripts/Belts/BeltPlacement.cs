@@ -202,9 +202,11 @@ public class BeltPlacement : MonoBehaviour
     }
     private void FindStartPosition()
     {
-        if (Physics.Raycast(mainCam.ScreenPointToRay(Input.mousePosition), out RaycastHit RayHit))
-            startPos = new Vector3(MathF.Round(RayHit.point.x), currentLayer, MathF.Round(RayHit.point.z));
-        lastHitPoint = Vector3.negativeInfinity;
+        Ray ray = mainCam.ScreenPointToRay(Input.mousePosition);
+        RaycastHit[] hits = Physics.RaycastAll(ray);
+        for (int i = 0; i < hits.Length; i++)
+            if (hits[i].collider.CompareTag("Grid"))
+                startPos = new Vector3(MathF.Round(hits[i].point.x), currentLayer, MathF.Round(hits[i].point.z));
     }
     private void ChangeAnchorPoint()
     {
@@ -336,6 +338,7 @@ public class BeltPlacement : MonoBehaviour
                 hitPoint = new Vector3(MathF.Round(hits[i].point.x), currentLayer, MathF.Round(hits[i].point.z));
                 if (hitPoint != lastHitPoint || justPressedF)
                     return true;
+                break;
             }
         }
         return false;
@@ -600,11 +603,10 @@ public class BeltPlacement : MonoBehaviour
             RebindAttachedSplitter(group, newGroup);
             if (hitPoint != group.conveyorsPos[0])
                 RebindGroupAttachedTo(newGroup);
-            else 
+            else
                 group.groupAttachedTo = string.Empty;
             newGroup.groupAttachedTo = group.groupAttachedTo;
             conveyorGroups.Add(newGroup);
-            Debug.Log(newGroup.groupAttachedTo);
             RedrawBelts(newGroup);
         }
         DeleteGroup(group);
@@ -1141,6 +1143,7 @@ public class BeltPlacement : MonoBehaviour
                 splitterToDraw = Instantiate(splitterToDraw, group.conveyorGroupTransform);
                 splitterToDraw.transform.SetSiblingIndex(i);
                 splitterToDraw.transform.position = group.splitters[index].splitterPos;
+                splitterToDraw.transform.eulerAngles = new Vector3(0f, GetSplitterRotation(downDir), 0f);
                 ApplyMaterial(splitterToDraw, normalMaterial);
                 index++;
             }
@@ -1169,8 +1172,9 @@ public class BeltPlacement : MonoBehaviour
                     else
                         downDir = group.conveyorsPos[splitterPosIndex] - group.conveyorsPos[splitterPosIndex - 1];
                     splitterToDraw = FindSplitterObj(upDir, downDir, group.splitters[i]);
-                    splitterToDraw = Instantiate(splitterToDraw);
+                    splitterToDraw = Instantiate(splitterToDraw, gameObject.transform);
                     splitterToDraw.transform.position = group.splitters[i].splitterPos;
+                    splitterToDraw.transform.eulerAngles = new Vector3(0f, GetSplitterRotation(downDir), 0f);
                     ApplyMaterial(splitterToDraw, selectedMaterial);
                     currentSelectedBelts.Add(splitterToDraw);
                 }
@@ -1180,15 +1184,18 @@ public class BeltPlacement : MonoBehaviour
     private GameObject FindSplitterObj(Vector3 upDir, Vector3 downDir, ConveyorGroup.Splitter splitter)
     {
         bool isStraightSplitter = false;
-        if (upDir * -1 == downDir)
+        if (upDir == downDir)
             isStraightSplitter = true;
 
         if (isStraightSplitter && !splitter.HasTwoOutputs)
         {
-            if (upDir.x - downDir.x > downDir.x || upDir.y - downDir.y > downDir.y)
-                return rightSplitter;
+            if (splitter.output1Dir == Vector3.forward && (splitter.splitterPos + upDir).x > (splitter.splitterPos - downDir).x ||
+                splitter.output1Dir == Vector3.back && (splitter.splitterPos + upDir).x < (splitter.splitterPos - downDir).x ||
+                splitter.output1Dir == Vector3.right && upDir == Vector3.back ||
+                splitter.output1Dir == Vector3.left && upDir == Vector3.forward)
+                return leftSplitter;
             else
-                return leftMerger;
+                return rightSplitter;
         }
         else if (isStraightSplitter && splitter.HasTwoOutputs)
         {
@@ -1200,13 +1207,29 @@ public class BeltPlacement : MonoBehaviour
                 return cornerSplitter;
             else
             {
-                if (upDir == Vector3.right || upDir == Vector3.forward)
-                    return rightSplitter;
-                else
+                if (upDir == Vector3.forward && (splitter.splitterPos + splitter.output1Dir).x > (splitter.splitterPos - downDir).x ||
+                    upDir == Vector3.back && (splitter.splitterPos + splitter.output1Dir).x < (splitter.splitterPos - downDir).x ||
+                    upDir == Vector3.right && (splitter.splitterPos - splitter.output1Dir).y == (splitter.splitterPos + downDir).y ||
+                    upDir == Vector3.left && (splitter.splitterPos - splitter.output1Dir).y != (splitter.splitterPos + downDir).y)
                     return leftSplitter;
+                else
+                    return rightSplitter;
             }
         }
         return null;
+    }
+    private int GetSplitterRotation(Vector3 downDir)
+    {
+        int rot = 0;
+        if (downDir == Vector3.forward)
+            rot = 180;
+        else if (downDir == Vector3.right)
+            rot = 270;
+        else if (downDir == Vector3.down)
+            rot = 0;
+        else if (downDir == Vector3.left)
+            rot = 90;
+        return rot;
     }
     private void DeleteAllBeltsAtPos(Vector3 pos)
     {

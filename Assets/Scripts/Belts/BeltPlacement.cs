@@ -1,17 +1,11 @@
-using JetBrains.Annotations;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Dynamic;
+using System.Diagnostics;
 using System.Linq;
 using Unity.Mathematics;
 using Unity.VisualScripting;
-using UnityEditor;
 using UnityEngine;
-using UnityEngine.UIElements;
-using static BeltPlacement;
-using static UnityEngine.UI.GridLayoutGroup;
+using Debug = UnityEngine.Debug;
 
 public class BeltPlacement : MonoBehaviour
 {
@@ -44,7 +38,7 @@ public class BeltPlacement : MonoBehaviour
             public Vector3 positionMergedInto;
         }
         public List<Splitter> splitters = new List<Splitter>();
-        [HideInInspector] public Merger merger;
+        public Merger merger;
     }
 
     [SerializeField] private List<ConveyorGroup> conveyorGroups;
@@ -68,7 +62,7 @@ public class BeltPlacement : MonoBehaviour
     private Vector3 lastHitPoint;
     private Vector3 startPos;
     private string currentId = "";
-    public char lastBeltType;
+    private char lastBeltType;
 
     public ChangeLayer layers;
     private int currentLayer = 0;
@@ -78,12 +72,14 @@ public class BeltPlacement : MonoBehaviour
 
     private Vector3[] currentBeltPositions = { };
     private Vector3[] currentBeltGroupPositions = { };
-    public Vector3[] overlappingPositions = { };
-    public string[] overlappedGroups = { };
+    private Vector3[] overlappingPositions = { };
+    private string[] overlappedGroups = { };
 
     private ConveyorGroup.Splitter currentSplitter;
     private Vector3 lastSplitterPos = Vector3.negativeInfinity;
     private string groupAttachedTo = string.Empty;
+
+    private ConveyorGroup.Merger currentMerger;
 
     #region Belt prefabs and materials
 
@@ -108,7 +104,7 @@ public class BeltPlacement : MonoBehaviour
     #endregion
 
     [HideInInspector] public List<GameObject> allSelectedBelts;
-    public List<GameObject> currentSelectedBelts;
+    [HideInInspector] public List<GameObject> currentSelectedBelts;
 
     void Update()
     {
@@ -133,7 +129,7 @@ public class BeltPlacement : MonoBehaviour
             ConveyorGroup newConveyorGroup = new ConveyorGroup();
             if (isHoldingMouse0)
             {
-                if (justPressedC)
+                if (justPressedC) // TODO : fix error code when pressing more than once it
                 {
                     lastBeltType = GetLastBeltType();
                     ChangeAnchorPoint();
@@ -151,6 +147,7 @@ public class BeltPlacement : MonoBehaviour
                     DeleteCurrentSelectedBelts();
                     if (!madeFirstPath)
                         CheckForSplitter(currentId);
+                    CheckForMerger(currentId);
                     DrawSelectedBeltGroup(currentId, startPos, lastBeltType);
                 }
                 else if (hasChangedLayers && currentBeltPositions.Length != 0)
@@ -163,7 +160,7 @@ public class BeltPlacement : MonoBehaviour
                 }
                 layers.hasChangedLayer = false;
             }
-            else if (isReleasingMouse0)
+            else if (isReleasingMouse0) // TODO : delete all overlapping belts within the newGroup's positions and then dissasociate it
             {
                 newConveyorGroup = CreateConveyorBeltGroupClassItem(newConveyorGroup);
                 SaveSelectedBelts(false);
@@ -233,13 +230,17 @@ public class BeltPlacement : MonoBehaviour
             newConveyorGroup.groupAttachedTo = groupAttachedTo;
 
         }
+        else if (currentMerger != null)
+        {
+            AddMerger(newConveyorGroup);
+        }
         else
         {
             DeleteOverlappingBelts();
             newConveyorGroup = MergeLinkedBeltGroups(newConveyorGroup);
         }
 
-        CreateTriggerBoxOnGroup(newConveyorGroup);
+            CreateTriggerBoxOnGroup(newConveyorGroup);
 
         conveyorGroups.Add(newConveyorGroup);
 
@@ -284,6 +285,14 @@ public class BeltPlacement : MonoBehaviour
         for (int i = 0; i < conveyorGroups.Count; i++)
             if (overlappedGroups.Contains(conveyorGroups[i].beltGroupId))
                 overlappingPositions = AppendArray(overlappingPositions, CheckForOverlap(currentBeltPositions, conveyorGroups[i].conveyorsPos));
+
+        DetectOverlappingWithin(overlappingPositions);
+    }
+    private void DetectOverlappingWithin(Vector3[] overlappingPos)
+    {
+        for (int i = 0; i < currentBeltPositions.Length; i++)
+            if (currentBeltGroupPositions.Contains(currentBeltPositions[i]))
+                overlappingPositions = Append(overlappingPositions, currentBeltPositions[i]);
     }
     private Vector3[] CheckForOverlap(Vector3[] array1, Vector3[] array2)
     {
@@ -859,6 +868,38 @@ public class BeltPlacement : MonoBehaviour
         for (int i = 0; i < gameObject.transform.childCount; i++)
             if (gameObject.transform.GetChild(i).name == group.beltGroupId)
                 Destroy(gameObject.transform.GetChild(i).gameObject);
+    }
+    private void CheckForMerger(string currentId)
+    {
+        currentMerger = new ConveyorGroup.Merger();
+
+        if (!overlappingPositions.Contains(currentBeltPositions[currentBeltPositions.Length - 1]))
+            return;
+        if (currentBeltPositions.Length < 2)
+            return;
+
+        ConveyorGroup groupMergingInto = new ConveyorGroup();
+
+        for (int i = 0; i < conveyorGroups.Count; i++)
+            if (overlappedGroups.Contains(conveyorGroups[i].beltGroupId) && conveyorGroups[i].conveyorsPos.Contains(currentBeltPositions[currentBeltPositions.Length - 1]))
+                groupMergingInto = conveyorGroups[i];
+
+        if (groupMergingInto.beltGroupId == null)
+            return;
+        Vector3 mergerDir = GetEndDir(currentId);
+        if (groupMergingInto.conveyorsPos[0] == currentBeltPositions[currentBeltPositions.Length - 1] && GetStartDir(groupMergingInto.beltGroupId) == mergerDir ||
+            groupMergingInto.conveyorsPos[groupMergingInto.conveyorsPos.Length - 1] == currentBeltPositions[currentBeltPositions.Length - 1] && GetEndDir(groupMergingInto.beltGroupId) == mergerDir * -1)
+            return;
+        if (groupMergingInto.conveyorsPos.Contains(currentBeltPositions[currentBeltPositions.Length - 2]))
+            return;
+
+        currentMerger.groupMergeredIntoId = groupMergingInto.beltGroupId;
+        currentMerger.positionMergedInto = currentBeltPositions[currentBeltPositions.Length - 1];
+    }
+    private void AddMerger(ConveyorGroup group)
+    {
+        group.merger = currentMerger;
+        currentMerger = new ConveyorGroup.Merger();
     }
     private Vector3 GetStartDir(string groupId)
     {

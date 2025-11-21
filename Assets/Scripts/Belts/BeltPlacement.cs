@@ -78,8 +78,8 @@ public class BeltPlacement : MonoBehaviour
 
     private Vector3[] currentBeltPositions = { };
     private Vector3[] currentBeltGroupPositions = { };
-    private Vector3[] overlappingPositions = { };
-    private string[] overlappedGroups = { };
+    public Vector3[] overlappingPositions = { };
+    public string[] overlappedGroups = { };
 
     private ConveyorGroup.Splitter currentSplitter;
     private Vector3 lastSplitterPos = Vector3.negativeInfinity;
@@ -385,6 +385,21 @@ public class BeltPlacement : MonoBehaviour
     private Vector3[] RemoveFromArray(Vector3[] array, Vector3 ValueToRemove)
     {
         Vector3[] newArray = new Vector3[array.Length - 1];
+        int offset = 0;
+        for (int i = 0; i < array.Length; i++)
+        {
+            if (array[i] == ValueToRemove)
+            {
+                offset = 1;
+                continue;
+            }
+            newArray[i - offset] = array[i];
+        }
+        return newArray;
+    }
+    private string[] RemoveFromArray(string[] array, string ValueToRemove)
+    {
+        string[] newArray = new string[array.Length - 1];
         int offset = 0;
         for (int i = 0; i < array.Length; i++)
         {
@@ -750,11 +765,16 @@ public class BeltPlacement : MonoBehaviour
         {
             if (overlappedGroups.Contains(conveyorGroups[i].beltGroupId))
             {
+                overlappedGroups = RemoveFromArray(overlappedGroups, conveyorGroups[i].beltGroupId);
                 Vector3[] conveyorPosBuffer = new Vector3[conveyorGroups[i].conveyorsPos.Length];
                 for (int j = 0; j < conveyorPosBuffer.Length; j++)
                     conveyorPosBuffer[j] = conveyorGroups[i].conveyorsPos[j];
                 conveyorGroups[i].conveyorsPos = RemoveDuplicatedPos(conveyorGroups[i].conveyorsPos, overlappingPositions);
-                DissasociateUnconectedGroup(conveyorGroups[i], conveyorPosBuffer);
+                if (conveyorGroups[i].conveyorsPos.Length != 0)
+                    DissasociateUnconectedGroup(conveyorGroups[i], conveyorPosBuffer);
+                else
+                    DeleteGroup(conveyorGroups[i]);
+                i--;
             }
         }
     }
@@ -784,7 +804,7 @@ public class BeltPlacement : MonoBehaviour
 
         return newPos;
     }
-    private void DissasociateUnconectedGroup(ConveyorGroup Group, Vector3[] groupOldPos) // TODO : take in consideration when the new group's position is zero or has been fully overlapped
+    private void DissasociateUnconectedGroup(ConveyorGroup Group, Vector3[] groupOldPos)
     {
         Vector3[] newGroupPos = new Vector3[0];
         bool firstTime = true;
